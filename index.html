@@ -545,7 +545,8 @@ function updateSidebar() {
     y: s.y
   }));
 
-  jsonBox.textContent = JSON.stringify(json, null, 2);
+ jsonBox.textContent = JSON.stringify(json, null, 2);
+ window.parent.postMessage({ type: 'coordenadas', data: JSON.stringify(json) }, '*');
 }
 
 function removeSig(id) {
