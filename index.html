@@ -574,10 +574,9 @@ function clearAll() {
 function copyJSON() {
   if (signatures.length === 0) return;
   const json = signatures.map(s => ({ nombre: s.name, pagina: s.page, x: s.x, y: s.y }));
-  navigator.clipboard.writeText(JSON.stringify(json, null, 2));
   window.parent.postMessage({ type: 'coordenadas', data: JSON.stringify(json) }, '*');
   const btn = document.getElementById('btnCopy');
-  btn.textContent = 'Copiado!';
+  btn.textContent = 'Guardado!';
   btn.classList.add('copied');
   setTimeout(() => { btn.textContent = 'Copiar JSON'; btn.classList.remove('copied'); }, 2000);
 }
