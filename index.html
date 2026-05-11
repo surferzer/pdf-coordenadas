@@ -526,7 +526,7 @@ function updateSidebar() {
     return;
   }
 
-  empty.remove();
+ if (empty && empty.parentNode) empty.remove();
   list.innerHTML = signatures.map((s, i) => `
     <div class="sig-item">
       <div class="sig-num">${i + 1}</div>
