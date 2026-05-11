@@ -575,12 +575,7 @@ function copyJSON() {
   if (signatures.length === 0) return;
   const json = signatures.map(s => ({ nombre: s.name, pagina: s.page, x: s.x, y: s.y }));
   const jsonStr = JSON.stringify(json);
-  try {
-    window.parent.bubble_fn_coordenadas(jsonStr);
-  } catch(e) {
-    console.log('postMessage fallback');
-    window.parent.postMessage({ type: 'coordenadas', data: jsonStr }, '*');
-  }
+  window.parent.postMessage({ type: 'coordenadas', data: jsonStr }, '*');
   const btn = document.getElementById('btnCopy');
   btn.textContent = 'Guardado!';
   btn.classList.add('copied');
