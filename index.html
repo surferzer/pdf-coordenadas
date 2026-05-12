@@ -100,6 +100,7 @@
       <div class="config-row">
         <label><span class="dot"></span>Firmante</label>
         <select id="firmanteSelect">
+          <option value="">-- Selecciona --</option>
           <option value="c@efektiva.mx|Arrendador">Arrendador</option>
           <option value="f@efektiva.mx|Arrendatario">Arrendatario</option>
           <option value="b@efektiva.mx|Mancomunado">Mancomunado</option>
@@ -113,16 +114,16 @@
       <div class="config-row">
         <label>Biométrico</label>
         <select id="identSelect">
+          <option value="">-- Selecciona --</option>
           <option value="face">Sí (face)</option>
           <option value="null">No (null)</option>
         </select>
       </div>
       <div class="config-row">
-        <label>Orden</label>
-        <input type="number" id="orderInput" value="1" min="1" max="10"/>
-        <div class="check-row" style="margin-left:8px;">
-          <input type="checkbox" id="checkInput" checked/>
-          <span>ID oficial</span>
+        <label>ID oficial</label>
+        <div class="check-row">
+          <input type="checkbox" id="checkInput"/>
+          <span>Requiere ID oficial</span>
         </div>
       </div>
     </div>
@@ -248,19 +249,29 @@ function showTooltip(e, canvas, viewport) {
 }
 
 function addSignature(e, canvas, viewport) {
+  const firmanteVal = document.getElementById('firmanteSelect').value;
+  if (!firmanteVal) { alert('Selecciona un firmante primero'); return; }
+  const identVal = document.getElementById('identSelect').value;
+  if (!identVal) { alert('Selecciona el tipo de identificación'); return; }
+
   const rect = canvas.getBoundingClientRect();
   const xPx = e.clientX - rect.left;
   const yPx = e.clientY - rect.top;
   const x = Math.round(((xPx / rect.width) * pageWidthPt) * 100) / 100;
   const y = Math.round(((yPx / rect.height) * pageHeightPt) * 100) / 100;
 
-  const firmanteVal = document.getElementById('firmanteSelect').value;
   const [email, name] = firmanteVal.split('|');
-  const identification = document.getElementById('identSelect').value;
-  const order = parseInt(document.getElementById('orderInput').value) || 1;
+  const identification = identVal;
+  const order = signatures.length + 1;
   const check = document.getElementById('checkInput').checked;
 
   signatures.push({ id: Date.now(), email, name, page: currentPage, x, y, xPx, yPx, identification, order, check });
+
+  // Reset controls after adding
+  document.getElementById('firmanteSelect').value = '';
+  document.getElementById('identSelect').value = '';
+  document.getElementById('checkInput').checked = false;
+
   drawMarkers(document.getElementById('canvasWrap'), viewport);
   updateSidebar();
 }
