@@ -7,304 +7,49 @@
 <script src="https://cdn.jsdelivr.net/npm/pdfjs-dist@3.11.174/build/pdf.min.js"></script>
 <style>
   * { box-sizing: border-box; margin: 0; padding: 0; }
-
-  body {
-    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-    background: #f5f5f5;
-    color: #1a1a1a;
-    min-height: 100vh;
-  }
-
-  header {
-    background: #fff;
-    border-bottom: 1px solid #e0e0e0;
-    padding: 14px 24px;
-    display: flex;
-    align-items: center;
-    gap: 12px;
-  }
-
-  header h1 {
-    font-size: 16px;
-    font-weight: 600;
-    color: #1a1a1a;
-  }
-
-  header span {
-    font-size: 12px;
-    color: #888;
-    background: #f0f0f0;
-    padding: 2px 8px;
-    border-radius: 20px;
-  }
-
-  .main {
-    display: grid;
-    grid-template-columns: 1fr 320px;
-    gap: 0;
-    height: calc(100vh - 53px);
-  }
-
-  .pdf-area {
-    background: #e8e8e8;
-    overflow-y: auto;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    padding: 24px;
-    gap: 16px;
-  }
-
-  .upload-zone {
-    width: 100%;
-    max-width: 600px;
-    border: 2px dashed #ccc;
-    border-radius: 12px;
-    padding: 48px 24px;
-    text-align: center;
-    background: #fff;
-    cursor: pointer;
-    transition: border-color 0.2s;
-  }
-
+  body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: #f5f5f5; color: #1a1a1a; min-height: 100vh; }
+  header { background: #fff; border-bottom: 1px solid #e0e0e0; padding: 14px 24px; display: flex; align-items: center; gap: 12px; }
+  header h1 { font-size: 16px; font-weight: 600; color: #1a1a1a; }
+  header span { font-size: 12px; color: #888; background: #f0f0f0; padding: 2px 8px; border-radius: 20px; }
+  .main { display: grid; grid-template-columns: 1fr 320px; gap: 0; height: calc(100vh - 53px); }
+  .pdf-area { background: #e8e8e8; overflow-y: auto; display: flex; flex-direction: column; align-items: center; padding: 24px; gap: 16px; }
+  .upload-zone { width: 100%; max-width: 600px; border: 2px dashed #ccc; border-radius: 12px; padding: 48px 24px; text-align: center; background: #fff; cursor: pointer; transition: border-color 0.2s; }
   .upload-zone:hover { border-color: #4f7ef8; }
-
   .upload-zone p { font-size: 15px; color: #555; margin-top: 8px; }
   .upload-zone small { font-size: 12px; color: #aaa; }
-
-  .upload-icon {
-    width: 48px;
-    height: 48px;
-    margin: 0 auto 12px;
-    background: #eef2ff;
-    border-radius: 50%;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-  }
-
-  .canvas-wrap {
-    position: relative;
-    cursor: crosshair;
-    display: inline-block;
-    line-height: 0;
-  }
-
+  .upload-icon { width: 48px; height: 48px; margin: 0 auto 12px; background: #eef2ff; border-radius: 50%; display: flex; align-items: center; justify-content: center; }
+  .canvas-wrap { position: relative; cursor: crosshair; display: inline-block; line-height: 0; }
   .canvas-wrap canvas { display: block; }
-
-  .marker {
-    position: absolute;
-    width: 28px;
-    height: 28px;
-    transform: translate(-50%, -100%);
-    pointer-events: none;
-  }
-
-  .marker-label {
-    position: absolute;
-    font-size: 11px;
-    font-weight: 600;
-    color: #fff;
-    background: #4f7ef8;
-    border-radius: 4px;
-    padding: 1px 5px;
-    transform: translate(-50%, -130%);
-    white-space: nowrap;
-    pointer-events: none;
-  }
-
-  .page-controls {
-    display: flex;
-    align-items: center;
-    gap: 12px;
-    background: #fff;
-    border-radius: 8px;
-    padding: 8px 16px;
-    font-size: 14px;
-    color: #555;
-  }
-
-  .page-controls button {
-    border: 1px solid #e0e0e0;
-    background: #fff;
-    border-radius: 6px;
-    width: 32px;
-    height: 32px;
-    cursor: pointer;
-    font-size: 16px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    transition: background 0.15s;
-  }
-
+  .marker { position: absolute; width: 28px; height: 28px; transform: translate(-50%, -100%); pointer-events: none; }
+  .marker-label { position: absolute; font-size: 11px; font-weight: 600; color: #fff; background: #4f7ef8; border-radius: 4px; padding: 1px 5px; transform: translate(-50%, -130%); white-space: nowrap; pointer-events: none; }
+  .page-controls { display: flex; align-items: center; gap: 12px; background: #fff; border-radius: 8px; padding: 8px 16px; font-size: 14px; color: #555; }
+  .page-controls button { border: 1px solid #e0e0e0; background: #fff; border-radius: 6px; width: 32px; height: 32px; cursor: pointer; font-size: 16px; display: flex; align-items: center; justify-content: center; transition: background 0.15s; }
   .page-controls button:hover:not(:disabled) { background: #f0f0f0; }
   .page-controls button:disabled { opacity: 0.3; cursor: default; }
-
-  .sidebar {
-    background: #fff;
-    border-left: 1px solid #e0e0e0;
-    display: flex;
-    flex-direction: column;
-    overflow: hidden;
-  }
-
-  .sidebar-header {
-    padding: 16px 20px;
-    border-bottom: 1px solid #f0f0f0;
-    font-size: 13px;
-    font-weight: 600;
-    color: #333;
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-  }
-
-  .sig-count {
-    background: #eef2ff;
-    color: #4f7ef8;
-    border-radius: 20px;
-    padding: 2px 8px;
-    font-size: 12px;
-  }
-
-  .sig-list {
-    flex: 1;
-    overflow-y: auto;
-    padding: 12px;
-    display: flex;
-    flex-direction: column;
-    gap: 8px;
-  }
-
-  .sig-item {
-    border: 1px solid #e8e8e8;
-    border-radius: 8px;
-    padding: 10px 12px;
-    background: #fafafa;
-    display: flex;
-    align-items: flex-start;
-    gap: 10px;
-  }
-
-  .sig-num {
-    width: 22px;
-    height: 22px;
-    background: #4f7ef8;
-    color: #fff;
-    border-radius: 50%;
-    font-size: 11px;
-    font-weight: 600;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    flex-shrink: 0;
-  }
-
+  .sidebar { background: #fff; border-left: 1px solid #e0e0e0; display: flex; flex-direction: column; overflow: hidden; }
+  .sidebar-header { padding: 16px 20px; border-bottom: 1px solid #f0f0f0; font-size: 13px; font-weight: 600; color: #333; display: flex; justify-content: space-between; align-items: center; }
+  .sig-count { background: #eef2ff; color: #4f7ef8; border-radius: 20px; padding: 2px 8px; font-size: 12px; }
+  .sig-list { flex: 1; overflow-y: auto; padding: 12px; display: flex; flex-direction: column; gap: 8px; }
+  .sig-item { border: 1px solid #e8e8e8; border-radius: 8px; padding: 10px 12px; background: #fafafa; display: flex; align-items: flex-start; gap: 10px; }
+  .sig-num { width: 22px; height: 22px; background: #4f7ef8; color: #fff; border-radius: 50%; font-size: 11px; font-weight: 600; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
   .sig-data { flex: 1; }
   .sig-data .sig-name { font-size: 13px; font-weight: 500; color: #1a1a1a; margin-bottom: 2px; }
   .sig-data .sig-coords { font-size: 11px; color: #888; font-family: monospace; }
-
-  .sig-del {
-    background: none;
-    border: none;
-    cursor: pointer;
-    color: #ccc;
-    font-size: 16px;
-    line-height: 1;
-    padding: 0;
-    transition: color 0.15s;
-  }
+  .sig-del { background: none; border: none; cursor: pointer; color: #ccc; font-size: 16px; line-height: 1; padding: 0; transition: color 0.15s; }
   .sig-del:hover { color: #e74c3c; }
-
-  .empty-state {
-    text-align: center;
-    padding: 32px 16px;
-    color: #aaa;
-    font-size: 13px;
-  }
-
-  .empty-state svg { margin-bottom: 8px; opacity: 0.3; }
-
-  .sidebar-footer {
-    padding: 16px;
-    border-top: 1px solid #f0f0f0;
-    display: flex;
-    flex-direction: column;
-    gap: 8px;
-  }
-
-  .json-box {
-    background: #f8f8f8;
-    border: 1px solid #e8e8e8;
-    border-radius: 8px;
-    padding: 10px 12px;
-    font-size: 11px;
-    font-family: monospace;
-    color: #444;
-    max-height: 140px;
-    overflow-y: auto;
-    white-space: pre;
-    line-height: 1.5;
-  }
-
-  .btn-copy {
-    border: none;
-    background: #4f7ef8;
-    color: #fff;
-    border-radius: 8px;
-    padding: 10px;
-    font-size: 13px;
-    font-weight: 500;
-    cursor: pointer;
-    transition: background 0.15s;
-    width: 100%;
-  }
-
+  .empty-state { text-align: center; padding: 32px 16px; color: #aaa; font-size: 13px; }
+  .sidebar-footer { padding: 16px; border-top: 1px solid #f0f0f0; display: flex; flex-direction: column; gap: 8px; }
+  .json-box { background: #f8f8f8; border: 1px solid #e8e8e8; border-radius: 8px; padding: 10px 12px; font-size: 11px; font-family: monospace; color: #444; max-height: 140px; overflow-y: auto; white-space: pre; line-height: 1.5; }
+  .btn-copy { border: none; background: #4f7ef8; color: #fff; border-radius: 8px; padding: 10px; font-size: 13px; font-weight: 500; cursor: pointer; transition: background 0.15s; width: 100%; }
   .btn-copy:hover { background: #3a6ae0; }
   .btn-copy.copied { background: #27ae60; }
-
-  .btn-clear {
-    border: 1px solid #e8e8e8;
-    background: #fff;
-    color: #888;
-    border-radius: 8px;
-    padding: 8px;
-    font-size: 12px;
-    cursor: pointer;
-    transition: all 0.15s;
-    width: 100%;
-  }
-
+  .btn-clear { border: 1px solid #e8e8e8; background: #fff; color: #888; border-radius: 8px; padding: 8px; font-size: 12px; cursor: pointer; transition: all 0.15s; width: 100%; }
   .btn-clear:hover { border-color: #e74c3c; color: #e74c3c; }
-
   input[type="file"] { display: none; }
-
-  .tooltip {
-    position: absolute;
-    background: rgba(0,0,0,0.75);
-    color: #fff;
-    font-size: 11px;
-    padding: 4px 8px;
-    border-radius: 4px;
-    pointer-events: none;
-    white-space: nowrap;
-    z-index: 100;
-    transform: translate(-50%, -110%);
-    display: none;
-  }
-
-  .sig-name-input {
-    border: 1px solid #e0e0e0;
-    border-radius: 6px;
-    padding: 6px 10px;
-    font-size: 13px;
-    width: 100%;
-    outline: none;
-    margin-top: 4px;
-  }
-
-  .sig-name-input:focus { border-color: #4f7ef8; }
+  .tooltip { position: absolute; background: rgba(0,0,0,0.75); color: #fff; font-size: 11px; padding: 4px 8px; border-radius: 4px; pointer-events: none; white-space: nowrap; z-index: 100; transform: translate(-50%, -110%); display: none; }
+  .firmante-select { border: 1px solid #e0e0e0; border-radius: 6px; padding: 6px 10px; font-size: 13px; width: 100%; outline: none; margin-top: 4px; background: #fff; cursor: pointer; }
+  .firmante-select:focus { border-color: #4f7ef8; }
+  .color-dot { display: inline-block; width: 10px; height: 10px; background: #FFD247; border-radius: 50%; margin-right: 4px; vertical-align: middle; }
 </style>
 </head>
 <body>
@@ -342,8 +87,17 @@
     </div>
 
     <div style="padding: 12px 16px; border-bottom: 1px solid #f0f0f0;">
-      <label style="font-size: 12px; color: #888; display:block; margin-bottom:4px;">Nombre del firmante (opcional)</label>
-      <input type="text" class="sig-name-input" id="signerName" placeholder="Ej: Firmante 1, Cliente, etc."/>
+      <label style="font-size: 12px; color: #888; display:block; margin-bottom:4px;"><span class="color-dot"></span>Tipo de firmante</label>
+      <select class="firmante-select" id="firmanteSelect">
+        <option value="c@efektiva.mx">Arrendador</option>
+        <option value="f@efektiva.mx">Arrendatario</option>
+        <option value="b@efektiva.mx">Mancomunado</option>
+        <option value="j@efektiva.mx">Obligado</option>
+        <option value="a@efektiva.mx">Depositario</option>
+        <option value="p@efektiva.mx">Testigo 1</option>
+        <option value="g@efektiva.mx">Testigo 2</option>
+        <option value="m@efektiva.mx">SharedWith</option>
+      </select>
     </div>
 
     <div class="sig-list" id="sigList">
@@ -358,7 +112,7 @@
 
     <div class="sidebar-footer">
       <div class="json-box" id="jsonBox">{ }</div>
-      <button class="btn-copy" id="btnCopy" onclick="copyJSON()">Copiar JSON</button>
+      <button class="btn-copy" id="btnCopy" onclick="saveJSON()">Guardar coordenadas</button>
       <button class="btn-clear" onclick="clearAll()">Limpiar todo</button>
     </div>
   </div>
@@ -366,12 +120,26 @@
 
 <script>
 pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdn.jsdelivr.net/npm/pdfjs-dist@3.11.174/build/pdf.worker.min.js';
+
 let pdfDoc = null;
 let currentPage = 1;
 let totalPages = 0;
 let signatures = [];
 let renderTask = null;
 let scale = 1.5;
+let pageWidthPt = 595.2;
+let pageHeightPt = 841.92;
+
+const FIRMANTES = {
+  'c@efektiva.mx': 'Arrendador',
+  'f@efektiva.mx': 'Arrendatario',
+  'b@efektiva.mx': 'Mancomunado',
+  'j@efektiva.mx': 'Obligado',
+  'a@efektiva.mx': 'Depositario',
+  'p@efektiva.mx': 'Testigo 1',
+  'g@efektiva.mx': 'Testigo 2',
+  'm@efektiva.mx': 'SharedWith'
+};
 
 const fileInput = document.getElementById('fileInput');
 const pdfArea = document.getElementById('pdfArea');
@@ -397,13 +165,19 @@ async function loadPDF(file) {
   totalPages = pdfDoc.numPages;
   currentPage = 1;
   signatures = [];
+
+  // Get real page dimensions from first page
+  const firstPage = await pdfDoc.getPage(1);
+  const vp = firstPage.getViewport({ scale: 1 });
+  pageWidthPt = Math.round(vp.width * 100) / 100;
+  pageHeightPt = Math.round(vp.height * 100) / 100;
+
   renderPage(currentPage);
   updateSidebar();
 }
 
 async function renderPage(num) {
   if (renderTask) { try { renderTask.cancel(); } catch(e){} }
-
   const page = await pdfDoc.getPage(num);
   const viewport = page.getViewport({ scale });
 
@@ -413,13 +187,11 @@ async function renderPage(num) {
     wrap = document.createElement('div');
     wrap.id = 'canvasWrap';
     wrap.className = 'canvas-wrap';
-
     const pageCtrl = document.createElement('div');
     pageCtrl.className = 'page-controls';
     pageCtrl.id = 'pageCtrl';
     pdfArea.appendChild(pageCtrl);
     pdfArea.appendChild(wrap);
-
     const tooltip = document.createElement('div');
     tooltip.className = 'tooltip';
     tooltip.id = 'tooltip';
@@ -451,8 +223,8 @@ async function renderPage(num) {
 
 function showTooltip(e, canvas, viewport) {
   const rect = canvas.getBoundingClientRect();
-  const x = Math.round(((e.clientX - rect.left) / rect.width) * viewport.width / scale * 100) / 100;
-  const y = Math.round(((e.clientY - rect.top) / rect.height) * viewport.height / scale * 100) / 100;
+  const x = Math.round(((e.clientX - rect.left) / rect.width) * pageWidthPt * 100) / 100;
+  const y = Math.round(((e.clientY - rect.top) / rect.height) * pageHeightPt * 100) / 100;
   const tooltip = document.getElementById('tooltip');
   tooltip.style.display = 'block';
   tooltip.style.left = (e.clientX - rect.left) + 'px';
@@ -464,25 +236,27 @@ function addSignature(e, canvas, viewport) {
   const rect = canvas.getBoundingClientRect();
   const xPx = e.clientX - rect.left;
   const yPx = e.clientY - rect.top;
-  const x = Math.round(((xPx / rect.width) * viewport.width / scale) * 100) / 100;
-  const y = Math.round(((yPx / rect.height) * viewport.height / scale) * 100) / 100;
 
-  const name = document.getElementById('signerName').value.trim() || ('Firma ' + (signatures.length + 1));
+  // Convert to PDF point coordinates (matching WeeTrust scale)
+  const x = Math.round(((xPx / rect.width) * pageWidthPt) * 100) / 100;
+  const y = Math.round(((yPx / rect.height) * pageHeightPt) * 100) / 100;
 
-  signatures.push({ id: Date.now(), name, page: currentPage, x, y, xPx, yPx });
+  const email = document.getElementById('firmanteSelect').value;
+  const label = FIRMANTES[email];
+
+  signatures.push({ id: Date.now(), email, label, page: currentPage, x, y, xPx, yPx });
   drawMarkers(document.getElementById('canvasWrap'), viewport);
   updateSidebar();
 }
 
 function drawMarkers(wrap, viewport) {
   wrap.querySelectorAll('.marker, .marker-label').forEach(el => el.remove());
-
-  signatures.filter(s => s.page === currentPage).forEach((s, i) => {
+  signatures.filter(s => s.page === currentPage).forEach(s => {
     const label = document.createElement('div');
     label.className = 'marker-label';
     label.style.left = s.xPx + 'px';
     label.style.top = s.yPx + 'px';
-    label.textContent = s.name;
+    label.textContent = s.label;
     wrap.appendChild(label);
 
     const marker = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
@@ -490,7 +264,7 @@ function drawMarkers(wrap, viewport) {
     marker.classList.add('marker');
     marker.style.left = s.xPx + 'px';
     marker.style.top = s.yPx + 'px';
-    marker.innerHTML = `<path d="M14 2C9.6 2 6 5.6 6 10c0 6 8 16 8 16s8-10 8-16c0-4.4-3.6-8-8-8z" fill="#4f7ef8" stroke="#fff" stroke-width="1.5"/><circle cx="14" cy="10" r="3" fill="#fff"/>`;
+    marker.innerHTML = `<path d="M14 2C9.6 2 6 5.6 6 10c0 6 8 16 8 16s8-10 8-16c0-4.4-3.6-8-8-8z" fill="#FFD247" stroke="#fff" stroke-width="1.5"/><circle cx="14" cy="10" r="3" fill="#fff"/>`;
     wrap.appendChild(marker);
   });
 }
@@ -511,42 +285,45 @@ function changePage(dir) {
   renderPage(currentPage);
 }
 
+function buildWeetrustJSON() {
+  return signatures.map(s => ({
+    user: { email: s.email },
+    coordinates: { x: s.x, y: s.y },
+    page: s.page,
+    pageY: s.y,
+    pageYv2: s.y,
+    color: "#FFD247",
+    imageSize: { width: 101, height: 51 },
+    parentImageSize: { width: pageWidthPt, height: pageHeightPt },
+    viewport: { width: pageWidthPt, height: pageHeightPt }
+  }));
+}
+
 function updateSidebar() {
   const list = document.getElementById('sigList');
-  const empty = document.getElementById('emptyState');
   const count = document.getElementById('sigCount');
   const jsonBox = document.getElementById('jsonBox');
 
   count.textContent = signatures.length;
 
   if (signatures.length === 0) {
-    list.innerHTML = '';
-    list.appendChild(empty);
+    list.innerHTML = '<div class="empty-state" id="emptyState"><svg width="32" height="32" viewBox="0 0 32 32" fill="none"><rect x="6" y="4" width="20" height="24" rx="3" stroke="#aaa" stroke-width="1.5"/><path d="M11 12h10M11 16h10M11 20h6" stroke="#aaa" stroke-width="1.5" stroke-linecap="round"/></svg><p>Carga un PDF y haz<br/>clic donde va la firma</p></div>';
     jsonBox.textContent = '{ }';
     return;
   }
 
- if (empty && empty.parentNode) empty.remove();
   list.innerHTML = signatures.map((s, i) => `
     <div class="sig-item">
       <div class="sig-num">${i + 1}</div>
       <div class="sig-data">
-        <div class="sig-name">${s.name}</div>
+        <div class="sig-name">${s.label}</div>
         <div class="sig-coords">Pág. ${s.page} &nbsp;|&nbsp; x: ${s.x} &nbsp;y: ${s.y}</div>
       </div>
       <button class="sig-del" onclick="removeSig(${s.id})" title="Eliminar">&#215;</button>
     </div>
   `).join('');
 
-  const json = signatures.map(s => ({
-    nombre: s.name,
-    pagina: s.page,
-    x: s.x,
-    y: s.y
-  }));
-
- jsonBox.textContent = JSON.stringify(json, null, 2);
- window.parent.postMessage({ type: 'coordenadas', data: JSON.stringify(json) }, '*');
+  jsonBox.textContent = JSON.stringify(buildWeetrustJSON(), null, 2);
 }
 
 function removeSig(id) {
@@ -571,15 +348,15 @@ function clearAll() {
   updateSidebar();
 }
 
-function copyJSON() {
+function saveJSON() {
   if (signatures.length === 0) return;
-  const json = signatures.map(s => ({ nombre: s.name, pagina: s.page, x: s.x, y: s.y }));
+  const json = buildWeetrustJSON();
   const jsonStr = JSON.stringify(json);
   window.parent.postMessage({ type: 'coordenadas', data: jsonStr }, '*');
   const btn = document.getElementById('btnCopy');
   btn.textContent = 'Guardado!';
   btn.classList.add('copied');
-  setTimeout(() => { btn.textContent = 'Copiar JSON'; btn.classList.remove('copied'); }, 2000);
+  setTimeout(() => { btn.textContent = 'Guardar coordenadas'; btn.classList.remove('copied'); }, 2000);
 }
 </script>
 </body>
