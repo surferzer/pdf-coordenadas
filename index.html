@@ -141,7 +141,7 @@
         <div class="json-tab" onclick="showTab('signatory')">Signatory</div>
       </div>
       <div class="json-box" id="jsonBox">{ }</div>
-      <button class="btn-save" id="btnSave" onclick="saveJSON()">Guardar coordenadas</button>
+      <button class="btn-save" id="btnSave" onclick="saveJSON()">Fijar firmas</button>
       <button class="btn-clear" onclick="clearAll()">Limpiar todo</button>
     </div>
   </div>
@@ -441,7 +441,7 @@ function saveJSON() {
   const btn = document.getElementById('btnSave');
   btn.textContent = 'Guardado!';
   btn.classList.add('saved');
-  setTimeout(() => { btn.textContent = 'Guardar coordenadas'; btn.classList.remove('saved'); }, 2000);
+  setTimeout(() => { btn.textContent = 'Fijar firmas'; btn.classList.remove('saved'); }, 2000);
 }
 </script>
 </body>
