@@ -11,6 +11,7 @@
   header { background: #fff; border-bottom: 1px solid #e0e0e0; padding: 12px 20px; display: flex; align-items: center; gap: 12px; }
   header h1 { font-size: 15px; font-weight: 600; color: #1a1a1a; }
   header span { font-size: 11px; color: #888; background: #f0f0f0; padding: 2px 8px; border-radius: 20px; }
+  .wt-badge { font-size: 11px; font-weight: 600; padding: 2px 10px; border-radius: 20px; margin-left: auto; background: #e8f5e9; color: #2e7d32; }
   .main { display: grid; grid-template-columns: 1fr 340px; gap: 0; height: calc(100vh - 49px); }
   .pdf-area { background: #e8e8e8; overflow-y: auto; display: flex; flex-direction: column; align-items: center; padding: 24px; gap: 16px; }
   .upload-zone { width: 100%; max-width: 600px; border: 2px dashed #ccc; border-radius: 12px; padding: 48px 24px; text-align: center; background: #fff; cursor: pointer; transition: border-color 0.2s; }
@@ -29,6 +30,7 @@
   .sidebar { background: #fff; border-left: 1px solid #e0e0e0; display: flex; flex-direction: column; overflow: hidden; }
   .sidebar-header { padding: 12px 16px; border-bottom: 1px solid #f0f0f0; font-size: 13px; font-weight: 600; color: #333; display: flex; justify-content: space-between; align-items: center; }
   .sig-count { background: #eef2ff; color: #4f7ef8; border-radius: 20px; padding: 2px 8px; font-size: 12px; }
+  .wt-info { padding: 7px 14px; border-bottom: 1px solid #f0f0f0; background: #f0faf1; display: flex; align-items: center; gap: 6px; font-size: 11px; color: #388e3c; }
   .sig-list { flex: 1; overflow-y: auto; padding: 10px; display: flex; flex-direction: column; gap: 6px; }
   .sig-item { border: 1px solid #e8e8e8; border-radius: 8px; padding: 8px 10px; background: #fafafa; display: flex; align-items: flex-start; gap: 8px; }
   .sig-num { width: 20px; height: 20px; background: #4f7ef8; color: #fff; border-radius: 50%; font-size: 10px; font-weight: 600; display: flex; align-items: center; justify-content: center; flex-shrink: 0; margin-top: 2px; }
@@ -42,9 +44,8 @@
   .config-panel { padding: 10px 14px; border-bottom: 1px solid #f0f0f0; display: flex; flex-direction: column; gap: 8px; }
   .config-row { display: flex; gap: 8px; align-items: center; }
   .config-row label { font-size: 11px; color: #888; white-space: nowrap; min-width: 70px; }
-  select, input[type="number"] { border: 1px solid #e0e0e0; border-radius: 6px; padding: 5px 8px; font-size: 12px; width: 100%; outline: none; background: #fff; }
-  select:focus, input[type="number"]:focus { border-color: #4f7ef8; }
-  input[type="number"] { width: 60px; }
+  select { border: 1px solid #e0e0e0; border-radius: 6px; padding: 5px 8px; font-size: 12px; width: 100%; outline: none; background: #fff; }
+  select:focus { border-color: #4f7ef8; }
   .check-row { display: flex; align-items: center; gap: 6px; font-size: 12px; color: #555; }
   .check-row input[type="checkbox"] { width: 14px; height: 14px; cursor: pointer; }
   .sidebar-footer { padding: 12px 14px; border-top: 1px solid #f0f0f0; display: flex; flex-direction: column; gap: 6px; }
@@ -71,6 +72,7 @@
   </svg>
   <h1>Coordenadas de firma en PDF</h1>
   <span>Clic en el PDF para fijar firmas</span>
+  <div class="wt-badge">✓ WeeTrust · 595.98 × 842.52</div>
 </header>
 
 <div class="main">
@@ -94,6 +96,11 @@
     <div class="sidebar-header">
       Firmas agregadas
       <span class="sig-count" id="sigCount">0</span>
+    </div>
+
+    <div class="wt-info">
+      <svg width="12" height="12" viewBox="0 0 16 16" fill="none"><circle cx="8" cy="8" r="7" stroke="#388e3c" stroke-width="1.2"/><path d="M8 7v4M8 5v1" stroke="#388e3c" stroke-width="1.5" stroke-linecap="round"/></svg>
+      Espacio de coordenadas WeeTrust (595.98 × 842.52 pt)
     </div>
 
     <div class="config-panel">
@@ -129,7 +136,7 @@
     </div>
 
     <div class="sig-list" id="sigList">
-      <div class="empty-state" id="emptyState">
+      <div class="empty-state">
         <svg width="28" height="28" viewBox="0 0 32 32" fill="none"><rect x="6" y="4" width="20" height="24" rx="3" stroke="#aaa" stroke-width="1.5"/><path d="M11 12h10M11 16h10M11 20h6" stroke="#aaa" stroke-width="1.5" stroke-linecap="round"/></svg>
         <p style="margin-top:6px;">Carga un PDF y haz<br/>clic donde va la firma</p>
       </div>
@@ -150,27 +157,33 @@
 <script>
 pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdn.jsdelivr.net/npm/pdfjs-dist@3.11.174/build/pdf.worker.min.js';
 
-let pdfDoc = null;
-let currentPage = 1;
-let totalPages = 0;
-let signatures = [];
-let renderTask = null;
-let scale = 1.5;
-let pageWidthPt = 595.2;
-let pageHeightPt = 841.92;
-let activeTab = 'coords';
+// Dimensiones fijas WeeTrust — igual que pdf-coordinates.weetrust.mx
+const WT_WIDTH  = 595.98;
+const WT_HEIGHT = 842.52;
 
-const fileInput = document.getElementById('fileInput');
-const pdfArea = document.getElementById('pdfArea');
+let pdfDoc      = null;
+let currentPage = 1;
+let totalPages  = 0;
+let signatures  = [];
+let renderTask  = null;
+let scale       = 1.5;
+let activeTab   = 'coords';
+
+const fileInput  = document.getElementById('fileInput');
+const pdfArea    = document.getElementById('pdfArea');
 const uploadZone = document.querySelector('label[for="fileInput"]');
 
 fileInput.addEventListener('change', e => {
   const file = e.target.files[0];
   if (file && file.type === 'application/pdf') loadPDF(file);
 });
-
-uploadZone.addEventListener('dragover', e => { e.preventDefault(); uploadZone.querySelector('.upload-zone').style.borderColor = '#4f7ef8'; });
-uploadZone.addEventListener('dragleave', () => { uploadZone.querySelector('.upload-zone').style.borderColor = '#ccc'; });
+uploadZone.addEventListener('dragover', e => {
+  e.preventDefault();
+  uploadZone.querySelector('.upload-zone').style.borderColor = '#4f7ef8';
+});
+uploadZone.addEventListener('dragleave', () => {
+  uploadZone.querySelector('.upload-zone').style.borderColor = '#ccc';
+});
 uploadZone.addEventListener('drop', e => {
   e.preventDefault();
   uploadZone.querySelector('.upload-zone').style.borderColor = '#ccc';
@@ -180,21 +193,17 @@ uploadZone.addEventListener('drop', e => {
 
 async function loadPDF(file) {
   const arrayBuffer = await file.arrayBuffer();
-  pdfDoc = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
-  totalPages = pdfDoc.numPages;
+  pdfDoc      = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
+  totalPages  = pdfDoc.numPages;
   currentPage = 1;
-  signatures = [];
-  const firstPage = await pdfDoc.getPage(1);
-  const vp = firstPage.getViewport({ scale: 1 });
-  pageWidthPt = Math.round(vp.width * 100) / 100;
-  pageHeightPt = Math.round(vp.height * 100) / 100;
+  signatures  = [];
   renderPage(currentPage);
   updateSidebar();
 }
 
 async function renderPage(num) {
   if (renderTask) { try { renderTask.cancel(); } catch(e){} }
-  const page = await pdfDoc.getPage(num);
+  const page     = await pdfDoc.getPage(num);
   const viewport = page.getViewport({ scale });
 
   let wrap = document.getElementById('canvasWrap');
@@ -221,7 +230,7 @@ async function renderPage(num) {
     wrap.insertBefore(canvas, wrap.firstChild);
   }
 
-  canvas.width = viewport.width;
+  canvas.width  = viewport.width;
   canvas.height = viewport.height;
   wrap.style.width = viewport.width + 'px';
 
@@ -229,60 +238,60 @@ async function renderPage(num) {
   renderTask = page.render({ canvasContext: ctx, viewport });
   await renderTask.promise;
 
-  canvas.onclick = (e) => addSignature(e, canvas, viewport);
-  canvas.onmousemove = (e) => showTooltip(e, canvas, viewport);
-  canvas.onmouseleave = () => { document.getElementById('tooltip').style.display = 'none'; };
+  canvas.onclick      = (e) => addSignature(e, canvas);
+  canvas.onmousemove  = (e) => showTooltip(e, canvas);
+  canvas.onmouseleave = ()  => { document.getElementById('tooltip').style.display = 'none'; };
 
-  drawMarkers(wrap, viewport);
+  drawMarkers(wrap);
   updatePageControls(num, totalPages);
 }
 
-function showTooltip(e, canvas, viewport) {
+function showTooltip(e, canvas) {
   const rect = canvas.getBoundingClientRect();
-  const x = Math.round(((e.clientX - rect.left) / rect.width) * pageWidthPt * 100) / 100;
-  const y = Math.round(((e.clientY - rect.top) / rect.height) * pageHeightPt * 100) / 100;
-  const tooltip = document.getElementById('tooltip');
-  tooltip.style.display = 'block';
-  tooltip.style.left = (e.clientX - rect.left) + 'px';
-  tooltip.style.top = (e.clientY - rect.top) + 'px';
-  tooltip.textContent = `x: ${x}  y: ${y}`;
+  const x = Math.round(((e.clientX - rect.left) / rect.width)  * WT_WIDTH  * 100) / 100;
+  const y = Math.round(((e.clientY - rect.top)  / rect.height) * WT_HEIGHT * 100) / 100;
+  const tip = document.getElementById('tooltip');
+  tip.style.display = 'block';
+  tip.style.left = (e.clientX - rect.left) + 'px';
+  tip.style.top  = (e.clientY - rect.top)  + 'px';
+  tip.textContent = `x: ${x}  y: ${y}`;
 }
 
-function addSignature(e, canvas, viewport) {
+function addSignature(e, canvas) {
   const firmanteVal = document.getElementById('firmanteSelect').value;
   if (!firmanteVal) { alert('Selecciona un firmante primero'); return; }
   const identVal = document.getElementById('identSelect').value;
-  if (!identVal) { alert('Selecciona el tipo de identificación'); return; }
+  if (!identVal)  { alert('Selecciona el tipo de identificación'); return; }
 
   const rect = canvas.getBoundingClientRect();
-  const xPx = e.clientX - rect.left;
-  const yPx = e.clientY - rect.top;
-  const x = Math.round(((xPx / rect.width) * pageWidthPt) * 100) / 100;
-  const y = Math.round(((yPx / rect.height) * pageHeightPt) * 100) / 100;
+  const xPx  = e.clientX - rect.left;
+  const yPx  = e.clientY - rect.top;
+
+  // Coordenadas en espacio WeeTrust fijo
+  const x = Math.round(((xPx / rect.width)  * WT_WIDTH)  * 100) / 100;
+  const y = Math.round(((yPx / rect.height) * WT_HEIGHT) * 100) / 100;
 
   const [email, name] = firmanteVal.split('|');
-  const identification = identVal;
-  const order = signatures.length + 1;
   const check = document.getElementById('checkInput').checked;
+  const order = signatures.length + 1;
 
-  signatures.push({ id: Date.now(), email, name, page: currentPage, x, y, xPx, yPx, identification, order, check });
+  signatures.push({ id: Date.now(), email, name, page: currentPage, x, y, xPx, yPx, identification: identVal, order, check });
 
-  // Reset controls after adding
   document.getElementById('firmanteSelect').value = '';
-  document.getElementById('identSelect').value = '';
-  document.getElementById('checkInput').checked = false;
+  document.getElementById('identSelect').value    = '';
+  document.getElementById('checkInput').checked   = false;
 
-  drawMarkers(document.getElementById('canvasWrap'), viewport);
+  drawMarkers(document.getElementById('canvasWrap'));
   updateSidebar();
 }
 
-function drawMarkers(wrap, viewport) {
+function drawMarkers(wrap) {
   wrap.querySelectorAll('.marker, .marker-label').forEach(el => el.remove());
   signatures.filter(s => s.page === currentPage).forEach(s => {
     const label = document.createElement('div');
     label.className = 'marker-label';
     label.style.left = s.xPx + 'px';
-    label.style.top = s.yPx + 'px';
+    label.style.top  = s.yPx + 'px';
     label.textContent = s.name;
     wrap.appendChild(label);
 
@@ -290,19 +299,18 @@ function drawMarkers(wrap, viewport) {
     marker.setAttribute('viewBox', '0 0 28 28');
     marker.classList.add('marker');
     marker.style.left = s.xPx + 'px';
-    marker.style.top = s.yPx + 'px';
-    marker.innerHTML = `<path d="M14 2C9.6 2 6 5.6 6 10c0 6 8 16 8 16s8-10 8-16c0-4.4-3.6-8-8-8z" fill="#FFD247" stroke="#fff" stroke-width="1.5"/><circle cx="14" cy="10" r="3" fill="#fff"/>`;
+    marker.style.top  = s.yPx + 'px';
+    marker.innerHTML  = '<path d="M14 2C9.6 2 6 5.6 6 10c0 6 8 16 8 16s8-10 8-16c0-4.4-3.6-8-8-8z" fill="#FFD247" stroke="#fff" stroke-width="1.5"/><circle cx="14" cy="10" r="3" fill="#fff"/>';
     wrap.appendChild(marker);
   });
 }
 
 function updatePageControls(current, total) {
   const ctrl = document.getElementById('pageCtrl');
-  ctrl.innerHTML = `
-    <button onclick="changePage(-1)" ${current <= 1 ? 'disabled' : ''}>&#8592;</button>
-    <span>Página <strong>${current}</strong> de ${total}</span>
-    <button onclick="changePage(1)" ${current >= total ? 'disabled' : ''}>&#8594;</button>
-  `;
+  ctrl.innerHTML =
+    '<button onclick="changePage(-1)"' + (current <= 1 ? ' disabled' : '') + '>&#8592;</button>' +
+    '<span>P&aacute;gina <strong>' + current + '</strong> de ' + total + '</span>' +
+    '<button onclick="changePage(1)"' + (current >= total ? ' disabled' : '') + '>&#8594;</button>';
 }
 
 function changePage(dir) {
@@ -314,61 +322,35 @@ function changePage(dir) {
 
 function buildCoordsJSON() {
   return {
-    documentID: "6836193e997c07002afdc638",
+    documentID: "DOCUMENT_ID_PLACEHOLDER",
     staticSignPositions: signatures.map(s => ({
-      user: { email: s.email },
-      coordinates: { x: s.x, y: s.y },
-      page: s.page,
-      pageY: s.y,
-      pageYv2: s.y,
-      color: "#FFD247",
-      imageSize: { width: 101, height: 51 },
-      parentImageSize: { width: pageWidthPt, height: pageHeightPt },
-      viewport: { width: pageWidthPt, height: pageHeightPt }
+      user:            { email: s.email },
+      coordinates:     { x: s.x, y: s.y },
+      page:            s.page,
+      pageY:           s.y,
+      pageYv2:         s.y,
+      color:           "#FFD247",
+      imageSize:       { width: 101, height: 51 },
+      parentImageSize: { width: WT_WIDTH, height: WT_HEIGHT },
+      viewport:        { width: WT_WIDTH, height: WT_HEIGHT }
     }))
   };
 }
 
 function buildSignatoryJSON() {
-  const seen = {};
-  const signatory = [];
-  const sharedWith = [];
-
+  const seen = {}, signatory = [], sharedWith = [];
   signatures.forEach(s => {
     if (s.email === 'm@efektiva.mx') {
-      if (!seen['shared_' + s.email]) {
-        seen['shared_' + s.email] = true;
-        sharedWith.push({ emailID: s.email });
-      }
+      if (!seen['sw_' + s.email]) { seen['sw_' + s.email] = true; sharedWith.push({ emailID: s.email }); }
     } else {
       if (!seen[s.email]) {
         seen[s.email] = true;
-        signatory.push({
-          emailID: s.email,
-          name: s.name,
-          identification: s.identification === 'null' ? null : s.identification,
-          check: s.check,
-          order: s.order
-        });
+        signatory.push({ emailID: s.email, name: s.name, identification: s.identification === 'null' ? null : s.identification, check: s.check, order: s.order });
       }
     }
   });
-
-  // sharedWith always has placeholder email if not set
-  if (sharedWith.length === 0) {
-    sharedWith.push({ emailID: "m@gmail.com" });
-  }
-
-  return {
-    documentID: "6836193e997c07002afdc638",
-    nickname: "Representante legal",
-    message: "Firma tu contrato",
-    title: "Tu contrato esta listo",
-    hasOrder: false,
-    disableMailing: false,
-    signatory,
-    sharedWith
-  };
+  if (sharedWith.length === 0) sharedWith.push({ emailID: "m@gmail.com" });
+  return { documentID: "DOCUMENT_ID_PLACEHOLDER", nickname: "Representante legal", message: "Firma tu contrato", title: "Tu contrato esta listo", hasOrder: false, disableMailing: false, signatory, sharedWith };
 }
 
 function showTab(tab) {
@@ -380,66 +362,43 @@ function showTab(tab) {
 }
 
 function updateJsonBox() {
-  const jsonBox = document.getElementById('jsonBox');
-  if (signatures.length === 0) { jsonBox.textContent = '{ }'; return; }
-  if (activeTab === 'coords') {
-    jsonBox.textContent = JSON.stringify(buildCoordsJSON(), null, 2);
-  } else {
-    jsonBox.textContent = JSON.stringify(buildSignatoryJSON(), null, 2);
-  }
+  const b = document.getElementById('jsonBox');
+  if (signatures.length === 0) { b.textContent = '{ }'; return; }
+  b.textContent = activeTab === 'coords' ? JSON.stringify(buildCoordsJSON(), null, 2) : JSON.stringify(buildSignatoryJSON(), null, 2);
 }
 
 function updateSidebar() {
   const list = document.getElementById('sigList');
-  const count = document.getElementById('sigCount');
-  count.textContent = signatures.length;
-
+  document.getElementById('sigCount').textContent = signatures.length;
   if (signatures.length === 0) {
     list.innerHTML = '<div class="empty-state"><svg width="28" height="28" viewBox="0 0 32 32" fill="none"><rect x="6" y="4" width="20" height="24" rx="3" stroke="#aaa" stroke-width="1.5"/><path d="M11 12h10M11 16h10M11 20h6" stroke="#aaa" stroke-width="1.5" stroke-linecap="round"/></svg><p style="margin-top:6px;">Carga un PDF y haz<br/>clic donde va la firma</p></div>';
   } else {
-    list.innerHTML = signatures.map((s, i) => `
-      <div class="sig-item">
-        <div class="sig-num">${i + 1}</div>
-        <div class="sig-data">
-          <div class="sig-name">${s.name}</div>
-          <div class="sig-coords">Pág. ${s.page} | x: ${s.x} y: ${s.y}</div>
-          <div class="sig-meta">biométrico: ${s.identification === 'null' ? 'no' : 'sí'} · ID oficial: ${s.check ? 'sí' : 'no'} · orden: ${s.order}</div>
-        </div>
-        <button class="sig-del" onclick="removeSig(${s.id})">&#215;</button>
-      </div>
-    `).join('');
+    list.innerHTML = signatures.map((s, i) =>
+      '<div class="sig-item"><div class="sig-num">' + (i+1) + '</div><div class="sig-data"><div class="sig-name">' + s.name + '</div><div class="sig-coords">P&aacute;g. ' + s.page + ' | x: ' + s.x + ' y: ' + s.y + '</div><div class="sig-meta">biom&eacute;trico: ' + (s.identification === 'null' ? 'no' : 'sí') + ' &middot; ID oficial: ' + (s.check ? 'sí' : 'no') + ' &middot; orden: ' + s.order + '</div></div><button class="sig-del" onclick="removeSig(' + s.id + ')">&#215;</button></div>'
+    ).join('');
   }
-
   updateJsonBox();
 }
 
 function removeSig(id) {
   signatures = signatures.filter(s => s.id !== id);
-  if (pdfDoc) {
-    pdfDoc.getPage(currentPage).then(page => {
-      drawMarkers(document.getElementById('canvasWrap'), page.getViewport({ scale }));
-    });
-  }
+  const wrap = document.getElementById('canvasWrap');
+  if (wrap) drawMarkers(wrap);
   updateSidebar();
 }
 
 function clearAll() {
   signatures = [];
-  if (pdfDoc) {
-    pdfDoc.getPage(currentPage).then(page => {
-      drawMarkers(document.getElementById('canvasWrap'), page.getViewport({ scale }));
-    });
-  }
+  const wrap = document.getElementById('canvasWrap');
+  if (wrap) drawMarkers(wrap);
   updateSidebar();
 }
 
 function saveJSON() {
   if (signatures.length === 0) return;
-  const coordsStr = JSON.stringify(buildCoordsJSON());
-  const signatoryStr = JSON.stringify(buildSignatoryJSON());
-  window.parent.postMessage({ type: 'coordenadas', data: coordsStr, signatory: signatoryStr }, '*');
+  window.parent.postMessage({ type: 'coordenadas', data: JSON.stringify(buildCoordsJSON()), signatory: JSON.stringify(buildSignatoryJSON()) }, '*');
   const btn = document.getElementById('btnSave');
-  btn.textContent = 'Guardado!';
+  btn.textContent = '¡Guardado!';
   btn.classList.add('saved');
   setTimeout(() => { btn.textContent = 'Fijar firmas'; btn.classList.remove('saved'); }, 2000);
 }
