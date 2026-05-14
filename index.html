@@ -322,7 +322,7 @@ function changePage(dir) {
 
 function buildCoordsJSON() {
   return {
-    documentID: "DOCUMENT_ID_PLACEHOLDER",
+    documentID: "6836193e997c07002afdc638",
     staticSignPositions: signatures.map(s => ({
       user:            { email: s.email },
       coordinates:     { x: s.x, y: s.y },
@@ -350,7 +350,7 @@ function buildSignatoryJSON() {
     }
   });
   if (sharedWith.length === 0) sharedWith.push({ emailID: "m@gmail.com" });
-  return { documentID: "DOCUMENT_ID_PLACEHOLDER", nickname: "Representante legal", message: "Firma tu contrato", title: "Tu contrato esta listo", hasOrder: false, disableMailing: false, signatory, sharedWith };
+  return { documentID: "6836193e997c07002afdc638", nickname: "Representante legal", message: "Firma tu contrato", title: "Tu contrato esta listo", hasOrder: false, disableMailing: false, signatory, sharedWith };
 }
 
 function showTab(tab) {
