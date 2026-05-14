@@ -98,15 +98,10 @@
       <span class="sig-count" id="sigCount">0</span>
     </div>
 
-    <div class="wt-info">
-      <svg width="12" height="12" viewBox="0 0 16 16" fill="none"><circle cx="8" cy="8" r="7" stroke="#388e3c" stroke-width="1.2"/><path d="M8 7v4M8 5v1" stroke="#388e3c" stroke-width="1.5" stroke-linecap="round"/></svg>
-      Espacio de coordenadas WeeTrust (595.98 × 842.52 pt)
-    </div>
-
     <div class="config-panel">
       <div class="config-row">
         <label><span class="dot"></span>Firmante</label>
-        <select id="firmanteSelect">
+        <select id="firmanteSelect" onchange="clearMsg()">
           <option value="">-- Selecciona --</option>
           <option value="c@efektiva.mx|Arrendador">Arrendador</option>
           <option value="f@efektiva.mx|Arrendatario">Arrendatario</option>
@@ -120,19 +115,20 @@
       </div>
       <div class="config-row">
         <label>Biométrico</label>
-        <select id="identSelect" onchange="if(this.value==='null'){document.getElementById('checkInput').checked=false;document.getElementById('checkInput').disabled=true;}else{document.getElementById('checkInput').disabled=false;}">
+        <select id="identSelect" onchange="onIdentChange(this.value)">
           <option value="">-- Selecciona --</option>
           <option value="face">Sí (face)</option>
           <option value="null">No (null)</option>
         </select>
       </div>
-      <div class="config-row">
+      <div class="config-row" id="checkRow">
         <label>ID oficial</label>
         <div class="check-row">
           <input type="checkbox" id="checkInput"/>
           <span>Requiere ID oficial</span>
         </div>
       </div>
+      <div id="configMsg" style="font-size:11px;color:#e65100;background:#fff3e0;border-radius:6px;padding:5px 8px;display:none;"></div>
     </div>
 
     <div class="sig-list" id="sigList">
@@ -257,11 +253,35 @@ function showTooltip(e, canvas) {
   tip.textContent = `x: ${x}  y: ${y}`;
 }
 
+function onIdentChange(val) {
+  const checkRow = document.getElementById('checkRow');
+  const checkInput = document.getElementById('checkInput');
+  if (val === 'null') {
+    checkRow.style.display = 'none';
+    checkInput.checked = false;
+  } else {
+    checkRow.style.display = 'flex';
+  }
+  clearMsg();
+}
+
+function showMsg(txt) {
+  const el = document.getElementById('configMsg');
+  el.textContent = txt;
+  el.style.display = 'block';
+}
+
+function clearMsg() {
+  const el = document.getElementById('configMsg');
+  if (el) el.style.display = 'none';
+}
+
 function addSignature(e, canvas) {
   const firmanteVal = document.getElementById('firmanteSelect').value;
-  if (!firmanteVal) { alert('Selecciona un firmante primero'); return; }
+  if (!firmanteVal) { showMsg('⚠ Selecciona un firmante primero'); return; }
   const identVal = document.getElementById('identSelect').value;
-  if (!identVal)  { alert('Selecciona el tipo de identificación'); return; }
+  if (!identVal)  { showMsg('⚠ Selecciona el tipo de biométrico'); return; }
+  clearMsg();
 
   const rect = canvas.getBoundingClientRect();
   const xPx  = e.clientX - rect.left;
