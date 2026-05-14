@@ -120,7 +120,7 @@
       </div>
       <div class="config-row">
         <label>Biométrico</label>
-        <select id="identSelect">
+        <select id="identSelect" onchange="if(this.value==='null'){document.getElementById('checkInput').checked=false;document.getElementById('checkInput').disabled=true;}else{document.getElementById('checkInput').disabled=false;}">
           <option value="">-- Selecciona --</option>
           <option value="face">Sí (face)</option>
           <option value="null">No (null)</option>
@@ -272,7 +272,8 @@ function addSignature(e, canvas) {
   const y = Math.round(((yPx / rect.height) * WT_HEIGHT) * 100) / 100;
 
   const [email, name] = firmanteVal.split('|');
-  const check = document.getElementById('checkInput').checked;
+  // Regla WeeTrust: identification:null SIEMPRE check:false
+  const check = identVal === 'null' ? false : document.getElementById('checkInput').checked;
   const order = signatures.length + 1;
 
   signatures.push({ id: Date.now(), email, name, page: currentPage, x, y, xPx, yPx, identification: identVal, order, check });
