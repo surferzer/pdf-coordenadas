@@ -30,12 +30,9 @@
   .sidebar { background: #fff; border-left: 1px solid #e0e0e0; display: flex; flex-direction: column; overflow: hidden; }
   .sidebar-header { padding: 12px 16px; border-bottom: 1px solid #f0f0f0; font-size: 13px; font-weight: 600; color: #333; display: flex; justify-content: space-between; align-items: center; }
   .sig-count { background: #eef2ff; color: #4f7ef8; border-radius: 20px; padding: 2px 8px; font-size: 12px; }
-
-  /* Contrato activo */
   .contrato-info { padding: 8px 14px; border-bottom: 1px solid #f0f0f0; font-size: 11px; display: flex; align-items: center; gap: 6px; }
   .contrato-info.sin-contrato { background: #fff8e1; color: #e65100; }
   .contrato-info.con-contrato { background: #e8f5e9; color: #2e7d32; }
-
   .sig-list { flex: 1; overflow-y: auto; padding: 10px; display: flex; flex-direction: column; gap: 6px; }
   .sig-item { border: 1px solid #e8e8e8; border-radius: 8px; padding: 8px 10px; background: #fafafa; display: flex; align-items: flex-start; gap: 8px; }
   .sig-num { width: 20px; height: 20px; background: #4f7ef8; color: #fff; border-radius: 50%; font-size: 10px; font-weight: 600; display: flex; align-items: center; justify-content: center; flex-shrink: 0; margin-top: 2px; }
@@ -171,64 +168,14 @@ pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdn.jsdelivr.net/npm/pdfjs-dis
 const WT_WIDTH  = 595.98;
 const WT_HEIGHT = 842.52;
 
-let pdfDoc        = null;
-let currentPage   = 1;
-let totalPages    = 0;
-let signatures    = [];
-let renderTask    = null;
-let scale         = 1.5;
-let activeTab     = 'coords';
-let contratoID    = null;   // ID recibido desde Bubble
-let contratoNombre = null;  // Nombre opcional recibido desde Bubble
+let pdfDoc      = null;
+let currentPage = 1;
+let totalPages  = 0;
+let signatures  = [];
+let renderTask  = null;
+let scale       = 1.5;
+let activeTab   = 'coords';
 
-// ─── Escuchar mensajes de Bubble ────────────────────────────────────
-window.addEventListener('message', function(e) {
-  if (!e.data) return;
-  // Bubble manda: { type: 'contrato', id: '...', nombre: '...' }
-  if (e.data.type === 'contrato' && e.data.id) {
-    contratoID     = e.data.id;
-    contratoNombre = e.data.nombre || null;
-    updateContratoInfo();
-    updateSaveBtn();
-  }
-});
-
-function updateContratoInfo() {
-  const el  = document.getElementById('contratoInfo');
-  const txt = document.getElementById('contratoInfoTxt');
-  if (contratoID) {
-    el.className = 'contrato-info con-contrato';
-    txt.textContent = '✓ ' + (contratoNombre || contratoID);
-    el.querySelector('svg').innerHTML = '<circle cx="8" cy="8" r="7" stroke="#2e7d32" stroke-width="1.2"/><path d="M5 8l2 2 4-4" stroke="#2e7d32" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>';
-  } else {
-    el.className = 'contrato-info sin-contrato';
-    txt.textContent = 'Selecciona un contrato en el menú';
-  }
-}
-
-function updateSaveBtn() {
-  const btn  = document.getElementById('btnSave');
-  const hint = document.getElementById('btnHint');
-  const hasPDF  = pdfDoc !== null;
-  const hasSigs = signatures.length > 0;
-  const hasCont = contratoID !== null;
-
-  btn.disabled = !(hasPDF && hasSigs && hasCont);
-
-  if (!hasCont && !hasPDF) {
-    hint.textContent = 'Selecciona un contrato y carga el PDF';
-  } else if (!hasCont) {
-    hint.textContent = 'Selecciona un contrato en el menú';
-  } else if (!hasPDF) {
-    hint.textContent = 'Carga el PDF del contrato';
-  } else if (!hasSigs) {
-    hint.textContent = 'Marca al menos una firma en el PDF';
-  } else {
-    hint.textContent = '';
-  }
-}
-
-// ─── Carga del PDF ──────────────────────────────────────────────────
 const fileInput  = document.getElementById('fileInput');
 const pdfArea    = document.getElementById('pdfArea');
 const uploadZone = document.querySelector('label[for="fileInput"]');
@@ -259,7 +206,6 @@ async function loadPDF(file) {
   signatures  = [];
   renderPage(currentPage);
   updateSidebar();
-  // botón se actualiza en updateSidebar
 }
 
 async function renderPage(num) {
@@ -470,19 +416,6 @@ function copiarFirmante(id) {
   });
   const texto = 'COORD:\n' + coordFragment + '\n\nSIGN:\n' + sigFragment;
 
-  // Intentar clipboard API primero
-  if (navigator.clipboard && navigator.clipboard.writeText) {
-    navigator.clipboard.writeText(texto).then(() => {
-      const btn = document.querySelector('[data-copy="' + id + '"]');
-      if (btn) { btn.classList.add('copied'); setTimeout(() => btn.classList.remove('copied'), 1500); }
-    }).catch(() => mostrarPopupCopia(texto, s.name));
-  } else {
-    mostrarPopupCopia(texto, s.name);
-  }
-}
-
-function mostrarPopupCopia(texto, nombre) {
-  // Quitar popup previo si existe
   const prev = document.getElementById('copyOverlay');
   if (prev) prev.remove();
 
@@ -493,7 +426,7 @@ function mostrarPopupCopia(texto, nombre) {
   const popup = document.createElement('div');
   popup.className = 'copy-popup';
   popup.innerHTML =
-    '<h4>JSON de ' + nombre + ' — selecciona todo y copia</h4>' +
+    '<h4>JSON de ' + s.name + ' — selecciona y copia</h4>' +
     '<textarea id="copyTextarea" readonly>' + texto + '</textarea>' +
     '<button class="copy-btn" onclick="selectAndCopy()">Seleccionar todo y copiar</button>' +
     '<button class="close-btn" onclick="document.getElementById(\'copyOverlay\').remove()">Cerrar</button>';
@@ -502,8 +435,7 @@ function mostrarPopupCopia(texto, nombre) {
   document.body.appendChild(overlay);
   overlay.addEventListener('click', function(e) { if (e.target === overlay) overlay.remove(); });
 
-  // Auto-seleccionar el texto
-  setTimeout(() => {
+  setTimeout(function() {
     const ta = document.getElementById('copyTextarea');
     if (ta) { ta.focus(); ta.select(); }
   }, 50);
@@ -516,14 +448,13 @@ function selectAndCopy() {
   try {
     document.execCommand('copy');
     const btn = ta.nextElementSibling;
-    if (btn) { btn.textContent = '✓ Copiado'; setTimeout(() => { btn.textContent = 'Seleccionar todo y copiar'; }, 1500); }
+    if (btn) { btn.textContent = '✓ Copiado'; setTimeout(function() { btn.textContent = 'Seleccionar todo y copiar'; }, 1500); }
   } catch(e) {}
 }
 
 function updateSidebar() {
   const list = document.getElementById('sigList');
   document.getElementById('sigCount').textContent = signatures.length;
-  // Habilitar/deshabilitar botón Fijar firmas
   const btnSave = document.getElementById('btnSave');
   if (btnSave) btnSave.disabled = signatures.length === 0 || !pdfDoc;
   if (signatures.length === 0) {
@@ -531,7 +462,7 @@ function updateSidebar() {
   } else {
     list.innerHTML = signatures.map((s, i) =>
       '<div class="sig-item"><div class="sig-num">' + (i+1) + '</div><div class="sig-data"><div class="sig-name">' + s.name + '</div><div class="sig-coords">P&aacute;g. ' + s.page + ' | x: ' + s.x + ' y: ' + s.y + '</div><div class="sig-meta">biom&eacute;trico: ' + (s.identification === 'null' ? 'no' : 'sí') + ' &middot; ID oficial: ' + (s.check ? 'sí' : 'no') + ' &middot; orden: ' + s.order + '</div></div>' +
-      '<button class="sig-copy" data-copy="' + s.id + '" onclick="copiarFirmante(' + s.id + ')" title="Copiar JSON de este firmante"><svg width="14" height="14" viewBox="0 0 16 16" fill="none"><rect x="5" y="5" width="9" height="9" rx="1.5" stroke="currentColor" stroke-width="1.2"/><path d="M4 11H3a1 1 0 01-1-1V3a1 1 0 011-1h7a1 1 0 011 1v1" stroke="currentColor" stroke-width="1.2"/></svg></button>' +
+      '<button class="sig-copy" data-copy="' + s.id + '" onclick="copiarFirmante(' + s.id + ')" title="Copiar JSON"><svg width="14" height="14" viewBox="0 0 16 16" fill="none"><rect x="5" y="5" width="9" height="9" rx="1.5" stroke="currentColor" stroke-width="1.2"/><path d="M4 11H3a1 1 0 01-1-1V3a1 1 0 011-1h7a1 1 0 011 1v1" stroke="currentColor" stroke-width="1.2"/></svg></button>' +
       '<button class="sig-del" onclick="removeSig(' + s.id + ')">&#215;</button></div>'
     ).join('');
   }
@@ -562,7 +493,7 @@ function saveJSON() {
   const btn = document.getElementById('btnSave');
   btn.textContent = '¡Guardado!';
   btn.classList.add('saved');
-  setTimeout(() => { btn.textContent = 'Fijar firmas'; btn.classList.remove('saved'); }, 2000);
+  setTimeout(function() { btn.textContent = 'Fijar firmas'; btn.classList.remove('saved'); }, 2000);
 }
 </script>
 </body>
