@@ -361,7 +361,6 @@ function addSignature(e, canvas) {
 
   drawMarkers(document.getElementById('canvasWrap'));
   updateSidebar();
-  updateSaveBtn();
 }
 
 function drawMarkers(wrap) {
@@ -492,7 +491,6 @@ function removeSig(id) {
   const wrap = document.getElementById('canvasWrap');
   if (wrap) drawMarkers(wrap);
   updateSidebar();
-  updateSaveBtn();
 }
 
 function clearAll() {
@@ -500,16 +498,14 @@ function clearAll() {
   const wrap = document.getElementById('canvasWrap');
   if (wrap) drawMarkers(wrap);
   updateSidebar();
-  updateSaveBtn();
 }
 
 function saveJSON() {
-  if (signatures.length === 0 || !contratoID) return;
+  if (signatures.length === 0) return;
   window.parent.postMessage({
     type:      'coordenadas',
     data:      JSON.stringify(buildCoordsJSON()),
-    signatory: JSON.stringify(buildSignatoryJSON()),
-    contratoID: contratoID
+    signatory: JSON.stringify(buildSignatoryJSON())
   }, '*');
   const btn = document.getElementById('btnSave');
   btn.textContent = '¡Guardado!';
