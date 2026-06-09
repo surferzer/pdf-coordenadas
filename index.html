@@ -153,7 +153,7 @@
         <div class="json-tab" onclick="showTab('signatory')">Signatory</div>
       </div>
       <div class="json-box" id="jsonBox">{ }</div>
-      <button class="btn-save" id="btnSave" onclick="saveJSON()">Fijar firmas</button>
+      <button class="btn-save" id="btnSave" onclick="saveJSON()" disabled>Fijar firmas</button>
       <button class="btn-clear" onclick="clearAll()">Limpiar todo</button>
     </div>
   </div>
@@ -462,10 +462,30 @@ function copiarFirmante(id) {
     identification: s.identification === 'null' ? null : s.identification,
     check: s.check, order: s.order
   });
-  navigator.clipboard.writeText('COORD: ' + coordFragment + '\nSIGN: ' + sigFragment).then(() => {
-    const btn = document.querySelector('[data-copy="' + id + '"]');
+  const texto = 'COORD: ' + coordFragment + '\nSIGN: ' + sigFragment;
+  const btn = document.querySelector('[data-copy="' + id + '"]');
+  if (navigator.clipboard && navigator.clipboard.writeText) {
+    navigator.clipboard.writeText(texto).then(() => {
+      if (btn) { btn.classList.add('copied'); setTimeout(() => btn.classList.remove('copied'), 1500); }
+    }).catch(() => fallbackCopy(texto, btn));
+  } else {
+    fallbackCopy(texto, btn);
+  }
+}
+
+function fallbackCopy(texto, btn) {
+  const ta = document.createElement('textarea');
+  ta.value = texto;
+  ta.style.position = 'fixed';
+  ta.style.opacity = '0';
+  document.body.appendChild(ta);
+  ta.focus();
+  ta.select();
+  try {
+    document.execCommand('copy');
     if (btn) { btn.classList.add('copied'); setTimeout(() => btn.classList.remove('copied'), 1500); }
-  });
+  } catch(e) {}
+  document.body.removeChild(ta);
 }
 
 function updateSidebar() {
