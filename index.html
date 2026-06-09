@@ -30,7 +30,12 @@
   .sidebar { background: #fff; border-left: 1px solid #e0e0e0; display: flex; flex-direction: column; overflow: hidden; }
   .sidebar-header { padding: 12px 16px; border-bottom: 1px solid #f0f0f0; font-size: 13px; font-weight: 600; color: #333; display: flex; justify-content: space-between; align-items: center; }
   .sig-count { background: #eef2ff; color: #4f7ef8; border-radius: 20px; padding: 2px 8px; font-size: 12px; }
-  .wt-info { padding: 7px 14px; border-bottom: 1px solid #f0f0f0; background: #f0faf1; display: flex; align-items: center; gap: 6px; font-size: 11px; color: #388e3c; }
+
+  /* Contrato activo */
+  .contrato-info { padding: 8px 14px; border-bottom: 1px solid #f0f0f0; font-size: 11px; display: flex; align-items: center; gap: 6px; }
+  .contrato-info.sin-contrato { background: #fff8e1; color: #e65100; }
+  .contrato-info.con-contrato { background: #e8f5e9; color: #2e7d32; }
+
   .sig-list { flex: 1; overflow-y: auto; padding: 10px; display: flex; flex-direction: column; gap: 6px; }
   .sig-item { border: 1px solid #e8e8e8; border-radius: 8px; padding: 8px 10px; background: #fafafa; display: flex; align-items: flex-start; gap: 8px; }
   .sig-num { width: 20px; height: 20px; background: #4f7ef8; color: #fff; border-radius: 50%; font-size: 10px; font-weight: 600; display: flex; align-items: center; justify-content: center; flex-shrink: 0; margin-top: 2px; }
@@ -53,14 +58,18 @@
   .json-tab { flex: 1; padding: 5px; font-size: 11px; border: 1px solid #e0e0e0; background: #f8f8f8; border-radius: 6px; cursor: pointer; text-align: center; color: #888; }
   .json-tab.active { background: #eef2ff; color: #4f7ef8; border-color: #4f7ef8; font-weight: 600; }
   .json-box { background: #f8f8f8; border: 1px solid #e8e8e8; border-radius: 8px; padding: 8px 10px; font-size: 10px; font-family: monospace; color: #444; max-height: 120px; overflow-y: auto; white-space: pre; line-height: 1.5; }
-  .btn-save { border: none; background: #4f7ef8; color: #fff; border-radius: 8px; padding: 9px; font-size: 13px; font-weight: 500; cursor: pointer; width: 100%; }
-  .btn-save:hover { background: #3a6ae0; }
+  .btn-save { border: none; background: #4f7ef8; color: #fff; border-radius: 8px; padding: 9px; font-size: 13px; font-weight: 500; cursor: pointer; width: 100%; transition: background 0.2s, opacity 0.2s; }
+  .btn-save:hover:not(:disabled) { background: #3a6ae0; }
+  .btn-save:disabled { background: #b0bec5; cursor: not-allowed; opacity: 0.7; }
   .btn-save.saved { background: #27ae60; }
   .btn-clear { border: 1px solid #e8e8e8; background: #fff; color: #888; border-radius: 8px; padding: 7px; font-size: 12px; cursor: pointer; width: 100%; }
   .btn-clear:hover { border-color: #e74c3c; color: #e74c3c; }
   input[type="file"] { display: none; }
   .tooltip { position: absolute; background: rgba(0,0,0,0.75); color: #fff; font-size: 11px; padding: 4px 8px; border-radius: 4px; pointer-events: none; white-space: nowrap; z-index: 100; transform: translate(-50%, -110%); display: none; }
   .dot { display: inline-block; width: 8px; height: 8px; background: #FFD247; border-radius: 50%; margin-right: 4px; }
+  .sig-copy { background: none; border: none; cursor: pointer; color: #ccc; padding: 0; margin-left: 2px; display: flex; align-items: center; }
+  .sig-copy:hover { color: #4f7ef8; }
+  .sig-copy.copied { color: #27ae60; }
 </style>
 </head>
 <body>
@@ -153,18 +162,67 @@
 <script>
 pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdn.jsdelivr.net/npm/pdfjs-dist@3.11.174/build/pdf.worker.min.js';
 
-// Dimensiones fijas WeeTrust — igual que pdf-coordinates.weetrust.mx
 const WT_WIDTH  = 595.98;
 const WT_HEIGHT = 842.52;
 
-let pdfDoc      = null;
-let currentPage = 1;
-let totalPages  = 0;
-let signatures  = [];
-let renderTask  = null;
-let scale       = 1.5;
-let activeTab   = 'coords';
+let pdfDoc        = null;
+let currentPage   = 1;
+let totalPages    = 0;
+let signatures    = [];
+let renderTask    = null;
+let scale         = 1.5;
+let activeTab     = 'coords';
+let contratoID    = null;   // ID recibido desde Bubble
+let contratoNombre = null;  // Nombre opcional recibido desde Bubble
 
+// ─── Escuchar mensajes de Bubble ────────────────────────────────────
+window.addEventListener('message', function(e) {
+  if (!e.data) return;
+  // Bubble manda: { type: 'contrato', id: '...', nombre: '...' }
+  if (e.data.type === 'contrato' && e.data.id) {
+    contratoID     = e.data.id;
+    contratoNombre = e.data.nombre || null;
+    updateContratoInfo();
+    updateSaveBtn();
+  }
+});
+
+function updateContratoInfo() {
+  const el  = document.getElementById('contratoInfo');
+  const txt = document.getElementById('contratoInfoTxt');
+  if (contratoID) {
+    el.className = 'contrato-info con-contrato';
+    txt.textContent = '✓ ' + (contratoNombre || contratoID);
+    el.querySelector('svg').innerHTML = '<circle cx="8" cy="8" r="7" stroke="#2e7d32" stroke-width="1.2"/><path d="M5 8l2 2 4-4" stroke="#2e7d32" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>';
+  } else {
+    el.className = 'contrato-info sin-contrato';
+    txt.textContent = 'Selecciona un contrato en el menú';
+  }
+}
+
+function updateSaveBtn() {
+  const btn  = document.getElementById('btnSave');
+  const hint = document.getElementById('btnHint');
+  const hasPDF  = pdfDoc !== null;
+  const hasSigs = signatures.length > 0;
+  const hasCont = contratoID !== null;
+
+  btn.disabled = !(hasPDF && hasSigs && hasCont);
+
+  if (!hasCont && !hasPDF) {
+    hint.textContent = 'Selecciona un contrato y carga el PDF';
+  } else if (!hasCont) {
+    hint.textContent = 'Selecciona un contrato en el menú';
+  } else if (!hasPDF) {
+    hint.textContent = 'Carga el PDF del contrato';
+  } else if (!hasSigs) {
+    hint.textContent = 'Marca al menos una firma en el PDF';
+  } else {
+    hint.textContent = '';
+  }
+}
+
+// ─── Carga del PDF ──────────────────────────────────────────────────
 const fileInput  = document.getElementById('fileInput');
 const pdfArea    = document.getElementById('pdfArea');
 const uploadZone = document.querySelector('label[for="fileInput"]');
@@ -195,6 +253,7 @@ async function loadPDF(file) {
   signatures  = [];
   renderPage(currentPage);
   updateSidebar();
+  // botón se actualiza en updateSidebar
 }
 
 async function renderPage(num) {
@@ -250,11 +309,11 @@ function showTooltip(e, canvas) {
   tip.style.display = 'block';
   tip.style.left = (e.clientX - rect.left) + 'px';
   tip.style.top  = (e.clientY - rect.top)  + 'px';
-  tip.textContent = `x: ${x}  y: ${y}`;
+  tip.textContent = 'x: ' + x + '  y: ' + y;
 }
 
 function onIdentChange(val) {
-  const checkRow = document.getElementById('checkRow');
+  const checkRow   = document.getElementById('checkRow');
   const checkInput = document.getElementById('checkInput');
   if (val === 'null') {
     checkRow.style.display = 'none';
@@ -287,12 +346,10 @@ function addSignature(e, canvas) {
   const xPx  = e.clientX - rect.left;
   const yPx  = e.clientY - rect.top;
 
-  // Coordenadas en espacio WeeTrust fijo
   const x = Math.round(((xPx / rect.width)  * WT_WIDTH)  * 100) / 100;
   const y = Math.round(((yPx / rect.height) * WT_HEIGHT) * 100) / 100;
 
   const [email, name] = firmanteVal.split('|');
-  // Regla WeeTrust: identification:null SIEMPRE check:false
   const check = identVal === 'null' ? false : document.getElementById('checkInput').checked;
   const order = signatures.length + 1;
 
@@ -304,6 +361,7 @@ function addSignature(e, canvas) {
 
   drawMarkers(document.getElementById('canvasWrap'));
   updateSidebar();
+  updateSaveBtn();
 }
 
 function drawMarkers(wrap) {
@@ -388,14 +446,42 @@ function updateJsonBox() {
   b.textContent = activeTab === 'coords' ? JSON.stringify(buildCoordsJSON(), null, 2) : JSON.stringify(buildSignatoryJSON(), null, 2);
 }
 
+function copiarFirmante(id) {
+  const s = signatures.find(x => x.id === id);
+  if (!s) return;
+  const coordFragment = JSON.stringify({
+    user: { email: s.email },
+    coordinates: { x: s.x, y: s.y },
+    page: s.page, pageY: s.y, pageYv2: s.y,
+    color: '#FFD247',
+    imageSize: { width: 101, height: 51 },
+    parentImageSize: { width: WT_WIDTH, height: WT_HEIGHT },
+    viewport: { width: WT_WIDTH, height: WT_HEIGHT }
+  });
+  const sigFragment = JSON.stringify({
+    emailID: s.email, name: s.name,
+    identification: s.identification === 'null' ? null : s.identification,
+    check: s.check, order: s.order
+  });
+  navigator.clipboard.writeText('COORD: ' + coordFragment + '\nSIGN: ' + sigFragment).then(() => {
+    const btn = document.querySelector('[data-copy="' + id + '"]');
+    if (btn) { btn.classList.add('copied'); setTimeout(() => btn.classList.remove('copied'), 1500); }
+  });
+}
+
 function updateSidebar() {
   const list = document.getElementById('sigList');
   document.getElementById('sigCount').textContent = signatures.length;
+  // Habilitar/deshabilitar botón Fijar firmas
+  const btnSave = document.getElementById('btnSave');
+  if (btnSave) btnSave.disabled = signatures.length === 0 || !pdfDoc;
   if (signatures.length === 0) {
     list.innerHTML = '<div class="empty-state"><svg width="28" height="28" viewBox="0 0 32 32" fill="none"><rect x="6" y="4" width="20" height="24" rx="3" stroke="#aaa" stroke-width="1.5"/><path d="M11 12h10M11 16h10M11 20h6" stroke="#aaa" stroke-width="1.5" stroke-linecap="round"/></svg><p style="margin-top:6px;">Carga un PDF y haz<br/>clic donde va la firma</p></div>';
   } else {
     list.innerHTML = signatures.map((s, i) =>
-      '<div class="sig-item"><div class="sig-num">' + (i+1) + '</div><div class="sig-data"><div class="sig-name">' + s.name + '</div><div class="sig-coords">P&aacute;g. ' + s.page + ' | x: ' + s.x + ' y: ' + s.y + '</div><div class="sig-meta">biom&eacute;trico: ' + (s.identification === 'null' ? 'no' : 'sí') + ' &middot; ID oficial: ' + (s.check ? 'sí' : 'no') + ' &middot; orden: ' + s.order + '</div></div><button class="sig-del" onclick="removeSig(' + s.id + ')">&#215;</button></div>'
+      '<div class="sig-item"><div class="sig-num">' + (i+1) + '</div><div class="sig-data"><div class="sig-name">' + s.name + '</div><div class="sig-coords">P&aacute;g. ' + s.page + ' | x: ' + s.x + ' y: ' + s.y + '</div><div class="sig-meta">biom&eacute;trico: ' + (s.identification === 'null' ? 'no' : 'sí') + ' &middot; ID oficial: ' + (s.check ? 'sí' : 'no') + ' &middot; orden: ' + s.order + '</div></div>' +
+      '<button class="sig-copy" data-copy="' + s.id + '" onclick="copiarFirmante(' + s.id + ')" title="Copiar JSON de este firmante"><svg width="14" height="14" viewBox="0 0 16 16" fill="none"><rect x="5" y="5" width="9" height="9" rx="1.5" stroke="currentColor" stroke-width="1.2"/><path d="M4 11H3a1 1 0 01-1-1V3a1 1 0 011-1h7a1 1 0 011 1v1" stroke="currentColor" stroke-width="1.2"/></svg></button>' +
+      '<button class="sig-del" onclick="removeSig(' + s.id + ')">&#215;</button></div>'
     ).join('');
   }
   updateJsonBox();
@@ -406,6 +492,7 @@ function removeSig(id) {
   const wrap = document.getElementById('canvasWrap');
   if (wrap) drawMarkers(wrap);
   updateSidebar();
+  updateSaveBtn();
 }
 
 function clearAll() {
@@ -413,11 +500,17 @@ function clearAll() {
   const wrap = document.getElementById('canvasWrap');
   if (wrap) drawMarkers(wrap);
   updateSidebar();
+  updateSaveBtn();
 }
 
 function saveJSON() {
-  if (signatures.length === 0) return;
-  window.parent.postMessage({ type: 'coordenadas', data: JSON.stringify(buildCoordsJSON()), signatory: JSON.stringify(buildSignatoryJSON()) }, '*');
+  if (signatures.length === 0 || !contratoID) return;
+  window.parent.postMessage({
+    type:      'coordenadas',
+    data:      JSON.stringify(buildCoordsJSON()),
+    signatory: JSON.stringify(buildSignatoryJSON()),
+    contratoID: contratoID
+  }, '*');
   const btn = document.getElementById('btnSave');
   btn.textContent = '¡Guardado!';
   btn.classList.add('saved');
