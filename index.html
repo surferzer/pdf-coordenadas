@@ -60,7 +60,7 @@
   .json-box { background: #f8f8f8; border: 1px solid #e8e8e8; border-radius: 8px; padding: 8px 10px; font-size: 10px; font-family: monospace; color: #444; max-height: 120px; overflow-y: auto; white-space: pre; line-height: 1.5; }
   .btn-save { border: none; background: #4f7ef8; color: #fff; border-radius: 8px; padding: 9px; font-size: 13px; font-weight: 500; cursor: pointer; width: 100%; transition: background 0.2s, opacity 0.2s; }
   .btn-save:hover:not(:disabled) { background: #3a6ae0; }
-  .btn-save:disabled { background: #b0bec5; cursor: not-allowed; opacity: 0.7; }
+  .btn-save:disabled { background: #b0bec5 !important; cursor: not-allowed !important; opacity: 0.7 !important; }
   .btn-save.saved { background: #27ae60; }
   .btn-clear { border: 1px solid #e8e8e8; background: #fff; color: #888; border-radius: 8px; padding: 7px; font-size: 12px; cursor: pointer; width: 100%; }
   .btn-clear:hover { border-color: #e74c3c; color: #e74c3c; }
@@ -70,6 +70,12 @@
   .sig-copy { background: none; border: none; cursor: pointer; color: #ccc; padding: 0; margin-left: 2px; display: flex; align-items: center; }
   .sig-copy:hover { color: #4f7ef8; }
   .sig-copy.copied { color: #27ae60; }
+  .copy-overlay { position: fixed; top:0; left:0; width:100%; height:100%; z-index: 9998; background: rgba(0,0,0,0.3); }
+  .copy-popup { position: fixed; top: 50%; left: 50%; transform: translate(-50%,-50%); background: #fff; border: 1px solid #e0e0e0; border-radius: 10px; padding: 16px; z-index: 9999; width: 280px; box-shadow: 0 4px 20px rgba(0,0,0,0.15); }
+  .copy-popup h4 { font-size: 12px; font-weight: 600; color: #333; margin-bottom: 8px; }
+  .copy-popup textarea { width: 100%; height: 90px; font-size: 10px; font-family: monospace; border: 1px solid #e0e0e0; border-radius: 6px; padding: 6px; resize: none; color: #444; }
+  .copy-popup .copy-btn { margin-top: 8px; width: 100%; padding: 7px; background: #4f7ef8; color: #fff; border: none; border-radius: 6px; cursor: pointer; font-size: 12px; font-weight: 500; }
+  .copy-popup .close-btn { margin-top: 4px; width: 100%; padding: 5px; background: none; color: #aaa; border: none; cursor: pointer; font-size: 11px; }
 </style>
 </head>
 <body>
@@ -462,30 +468,57 @@ function copiarFirmante(id) {
     identification: s.identification === 'null' ? null : s.identification,
     check: s.check, order: s.order
   });
-  const texto = 'COORD: ' + coordFragment + '\nSIGN: ' + sigFragment;
-  const btn = document.querySelector('[data-copy="' + id + '"]');
+  const texto = 'COORD:\n' + coordFragment + '\n\nSIGN:\n' + sigFragment;
+
+  // Intentar clipboard API primero
   if (navigator.clipboard && navigator.clipboard.writeText) {
     navigator.clipboard.writeText(texto).then(() => {
+      const btn = document.querySelector('[data-copy="' + id + '"]');
       if (btn) { btn.classList.add('copied'); setTimeout(() => btn.classList.remove('copied'), 1500); }
-    }).catch(() => fallbackCopy(texto, btn));
+    }).catch(() => mostrarPopupCopia(texto, s.name));
   } else {
-    fallbackCopy(texto, btn);
+    mostrarPopupCopia(texto, s.name);
   }
 }
 
-function fallbackCopy(texto, btn) {
-  const ta = document.createElement('textarea');
-  ta.value = texto;
-  ta.style.position = 'fixed';
-  ta.style.opacity = '0';
-  document.body.appendChild(ta);
-  ta.focus();
+function mostrarPopupCopia(texto, nombre) {
+  // Quitar popup previo si existe
+  const prev = document.getElementById('copyOverlay');
+  if (prev) prev.remove();
+
+  const overlay = document.createElement('div');
+  overlay.className = 'copy-overlay';
+  overlay.id = 'copyOverlay';
+
+  const popup = document.createElement('div');
+  popup.className = 'copy-popup';
+  popup.innerHTML =
+    '<h4>JSON de ' + nombre + ' — selecciona todo y copia</h4>' +
+    '<textarea id="copyTextarea" readonly>' + texto + '</textarea>' +
+    '<button class="copy-btn" onclick="selectAndCopy()">Seleccionar todo y copiar</button>' +
+    '<button class="close-btn" onclick="document.getElementById(\'copyOverlay\').remove()">Cerrar</button>';
+
+  overlay.appendChild(popup);
+  document.body.appendChild(overlay);
+  overlay.addEventListener('click', function(e) { if (e.target === overlay) overlay.remove(); });
+
+  // Auto-seleccionar el texto
+  setTimeout(() => {
+    const ta = document.getElementById('copyTextarea');
+    if (ta) { ta.focus(); ta.select(); }
+  }, 50);
+}
+
+function selectAndCopy() {
+  const ta = document.getElementById('copyTextarea');
+  if (!ta) return;
   ta.select();
   try {
     document.execCommand('copy');
-    if (btn) { btn.classList.add('copied'); setTimeout(() => btn.classList.remove('copied'), 1500); }
+    const btn = ta.nextElementSibling;
+    if (btn) { btn.textContent = '✓ Copiado'; setTimeout(() => { btn.textContent = 'Seleccionar todo y copiar'; }, 1500); }
   } catch(e) {}
-  document.body.removeChild(ta);
+}
 }
 
 function updateSidebar() {
