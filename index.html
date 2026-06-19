@@ -14,11 +14,10 @@
   .wt-badge { font-size: 11px; font-weight: 600; padding: 2px 10px; border-radius: 20px; margin-left: auto; background: #e8f5e9; color: #2e7d32; }
   .main { display: grid; grid-template-columns: 1fr 340px; gap: 0; height: calc(100vh - 49px); }
   .pdf-area { background: #e8e8e8; overflow-y: auto; display: flex; flex-direction: column; align-items: center; padding: 24px; gap: 16px; }
-  .upload-zone { width: 100%; max-width: 600px; border: 2px dashed #ccc; border-radius: 12px; padding: 48px 24px; text-align: center; background: #fff; cursor: pointer; transition: border-color 0.2s; }
-  .upload-zone:hover { border-color: #4f7ef8; }
-  .upload-zone p { font-size: 15px; color: #555; margin-top: 8px; }
-  .upload-zone small { font-size: 12px; color: #aaa; }
-  .upload-icon { width: 48px; height: 48px; margin: 0 auto 12px; background: #eef2ff; border-radius: 50%; display: flex; align-items: center; justify-content: center; }
+  .upload-zone { width: 100%; max-width: 600px; border: 2px dashed #e0e0e0; border-radius: 12px; padding: 48px 24px; text-align: center; background: #fff; }
+  .upload-zone p { font-size: 15px; color: #aaa; margin-top: 8px; }
+  .upload-zone small { font-size: 12px; color: #ccc; }
+  .upload-icon { width: 48px; height: 48px; margin: 0 auto 12px; background: #f5f5f5; border-radius: 50%; display: flex; align-items: center; justify-content: center; }
   .canvas-wrap { position: relative; cursor: crosshair; display: inline-block; line-height: 0; }
   .canvas-wrap canvas { display: block; }
   .marker { position: absolute; width: 28px; height: 28px; transform: translate(-50%, -100%); pointer-events: none; }
@@ -77,19 +76,17 @@
 
 <div class="main">
   <div class="pdf-area" id="pdfArea">
-    <label for="fileInput" style="width:100%;max-width:600px;">
-      <div class="upload-zone" id="uploadZone">
-        <div class="upload-icon">
-          <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
-            <path d="M12 15V3M12 3L8 7M12 3L16 7" stroke="#4f7ef8" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
-            <path d="M3 17v2a2 2 0 002 2h14a2 2 0 002-2v-2" stroke="#4f7ef8" stroke-width="1.8" stroke-linecap="round"/>
-          </svg>
-        </div>
-        <p>Selecciona o arrastra tu PDF aquí</p>
-        <small>Solo archivos .pdf</small>
+    <div class="upload-zone" id="uploadZone" style="width:100%;max-width:600px;">
+      <div class="upload-icon">
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
+          <path d="M12 15V3M12 3L8 7M12 3L16 7" stroke="#ccc" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
+          <path d="M3 17v2a2 2 0 002 2h14a2 2 0 002-2v-2" stroke="#ccc" stroke-width="1.8" stroke-linecap="round"/>
+        </svg>
       </div>
-    </label>
-    <input type="file" id="fileInput" accept=".pdf"/>
+      <p>Esperando documento...</p>
+      <small>El PDF se cargará automáticamente</small>
+    </div>
+    <input type="file" id="fileInput" accept=".pdf" style="display:none;"/>
   </div>
 
   <div class="sidebar">
@@ -174,27 +171,22 @@ let renderTask  = null;
 let scale       = 1.5;
 let activeTab   = 'coords';
 
+// ─── Escuchar URL de PDF desde Bubble ──────────────────────────────
+window.addEventListener('message', function(e) {
+  if (!e.data) return;
+  if (e.data.type === 'loadpdf' && e.data.url) {
+    fetch(e.data.url)
+      .then(r => r.blob())
+      .then(blob => {
+        const file = new File([blob], 'contrato.pdf', { type: 'application/pdf' });
+        loadPDF(file);
+      })
+      .catch(err => console.error('Error cargando PDF:', err));
+  }
+});
+
 const fileInput  = document.getElementById('fileInput');
 const pdfArea    = document.getElementById('pdfArea');
-const uploadZone = document.querySelector('label[for="fileInput"]');
-
-fileInput.addEventListener('change', e => {
-  const file = e.target.files[0];
-  if (file && file.type === 'application/pdf') loadPDF(file);
-});
-uploadZone.addEventListener('dragover', e => {
-  e.preventDefault();
-  uploadZone.querySelector('.upload-zone').style.borderColor = '#4f7ef8';
-});
-uploadZone.addEventListener('dragleave', () => {
-  uploadZone.querySelector('.upload-zone').style.borderColor = '#ccc';
-});
-uploadZone.addEventListener('drop', e => {
-  e.preventDefault();
-  uploadZone.querySelector('.upload-zone').style.borderColor = '#ccc';
-  const file = e.dataTransfer.files[0];
-  if (file && file.type === 'application/pdf') loadPDF(file);
-});
 
 async function loadPDF(file) {
   const arrayBuffer = await file.arrayBuffer();
