@@ -449,11 +449,25 @@ function clearAll() {
 function saveJSON() {
   if (signatures.length === 0) return;
 
-  // Construir campos individuales por firmante (order 1..N)
+  // Mapeo de nombre de rol a clave de campo
+  const rolMap = {
+    'Arrendador':   'arrendador',
+    'Arrendatario': 'arrendatario',
+    'Mancomunado':  'mancomunado',
+    'Obligado':     'obligado',
+    'Depositario':  'depositario',
+    'Testigo 1':    'testigo1',
+    'Testigo 2':    'testigo2',
+    'SharedWith':   'sharedwith'
+  };
+
   const firmantesData = {};
   signatures.forEach(s => {
-    firmantesData['firmante_' + s.order + '_nombre'] = s.nombre;
-    firmantesData['firmante_' + s.order + '_correo'] = s.correo;
+    const clave = rolMap[s.name];
+    if (clave) {
+      firmantesData[clave + '_nombre'] = s.nombre;
+      firmantesData[clave + '_correo'] = s.correo;
+    }
   });
 
   window.parent.postMessage({
