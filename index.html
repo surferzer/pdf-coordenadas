@@ -44,8 +44,8 @@
   .config-panel { padding: 10px 14px; border-bottom: 1px solid #f0f0f0; display: flex; flex-direction: column; gap: 8px; }
   .config-row { display: flex; gap: 8px; align-items: center; }
   .config-row label { font-size: 11px; color: #888; white-space: nowrap; min-width: 70px; }
-  select { border: 1px solid #e0e0e0; border-radius: 6px; padding: 5px 8px; font-size: 12px; width: 100%; outline: none; background: #fff; }
-  select:focus { border-color: #4f7ef8; }
+  select, input[type="text"], input[type="email"] { border: 1px solid #e0e0e0; border-radius: 6px; padding: 5px 8px; font-size: 12px; width: 100%; outline: none; background: #fff; }
+  select:focus, input[type="text"]:focus, input[type="email"]:focus { border-color: #4f7ef8; }
   .check-row { display: flex; align-items: center; gap: 6px; font-size: 12px; color: #555; }
   .check-row input[type="checkbox"] { width: 14px; height: 14px; cursor: pointer; }
   .sidebar-footer { padding: 12px 14px; border-top: 1px solid #f0f0f0; display: flex; flex-direction: column; gap: 6px; }
@@ -113,6 +113,16 @@
           <option value="m@efektiva.mx|SharedWith">SharedWith</option>
         </select>
       </div>
+      <!-- NUEVO: Nombre completo -->
+      <div class="config-row">
+        <label>Nombre</label>
+        <input type="text" id="nombreInput" placeholder="Nombre completo" onchange="clearMsg()" />
+      </div>
+      <!-- NUEVO: Correo electrónico -->
+      <div class="config-row">
+        <label>Correo</label>
+        <input type="email" id="correoInput" placeholder="correo@ejemplo.com" onchange="clearMsg()" />
+      </div>
       <div class="config-row">
         <label>Biométrico</label>
         <select id="identSelect" onchange="onIdentChange(this.value)">
@@ -153,7 +163,6 @@
 <script>
 pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdn.jsdelivr.net/npm/pdfjs-dist@3.11.174/build/pdf.worker.min.js';
 
-// Dimensiones fijas WeeTrust — igual que pdf-coordinates.weetrust.mx
 const WT_WIDTH  = 595.98;
 const WT_HEIGHT = 842.52;
 
@@ -276,29 +285,47 @@ function clearMsg() {
   if (el) el.style.display = 'none';
 }
 
+function validarEmail(email) {
+  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
+}
+
 function addSignature(e, canvas) {
   const firmanteVal = document.getElementById('firmanteSelect').value;
-  if (!firmanteVal) { showMsg('⚠ Selecciona un firmante primero'); return; }
+  if (!firmanteVal) { showMsg('⚠ Selecciona un tipo de firmante'); return; }
+
+  const nombre = document.getElementById('nombreInput').value.trim();
+  if (!nombre) { showMsg('⚠ Ingresa el nombre completo del firmante'); return; }
+
+  const correo = document.getElementById('correoInput').value.trim().toLowerCase();
+  if (!correo) { showMsg('⚠ Ingresa el correo del firmante'); return; }
+  if (!validarEmail(correo)) { showMsg('⚠ El correo no tiene un formato válido'); return; }
+
+  // Validar correo duplicado
+  const yaExiste = signatures.some(s => s.correo === correo);
+  if (yaExiste) { showMsg('⚠ Este correo ya fue usado en otro firmante'); return; }
+
   const identVal = document.getElementById('identSelect').value;
-  if (!identVal)  { showMsg('⚠ Selecciona el tipo de biométrico'); return; }
+  if (!identVal) { showMsg('⚠ Selecciona el tipo de biométrico'); return; }
+
   clearMsg();
 
   const rect = canvas.getBoundingClientRect();
   const xPx  = e.clientX - rect.left;
   const yPx  = e.clientY - rect.top;
 
-  // Coordenadas en espacio WeeTrust fijo
   const x = Math.round(((xPx / rect.width)  * WT_WIDTH)  * 100) / 100;
   const y = Math.round(((yPx / rect.height) * WT_HEIGHT) * 100) / 100;
 
   const [email, name] = firmanteVal.split('|');
-  // Regla WeeTrust: identification:null SIEMPRE check:false
   const check = identVal === 'null' ? false : document.getElementById('checkInput').checked;
   const order = signatures.length + 1;
 
-  signatures.push({ id: Date.now(), email, name, page: currentPage, x, y, xPx, yPx, identification: identVal, order, check });
+  // Guardamos nombre y correo real junto a los datos existentes
+  signatures.push({ id: Date.now(), email, name, nombre, correo, page: currentPage, x, y, xPx, yPx, identification: identVal, order, check });
 
   document.getElementById('firmanteSelect').value = '';
+  document.getElementById('nombreInput').value    = '';
+  document.getElementById('correoInput').value    = '';
   document.getElementById('identSelect').value    = '';
   document.getElementById('checkInput').checked   = false;
 
@@ -395,7 +422,11 @@ function updateSidebar() {
     list.innerHTML = '<div class="empty-state"><svg width="28" height="28" viewBox="0 0 32 32" fill="none"><rect x="6" y="4" width="20" height="24" rx="3" stroke="#aaa" stroke-width="1.5"/><path d="M11 12h10M11 16h10M11 20h6" stroke="#aaa" stroke-width="1.5" stroke-linecap="round"/></svg><p style="margin-top:6px;">Carga un PDF y haz<br/>clic donde va la firma</p></div>';
   } else {
     list.innerHTML = signatures.map((s, i) =>
-      '<div class="sig-item"><div class="sig-num">' + (i+1) + '</div><div class="sig-data"><div class="sig-name">' + s.name + '</div><div class="sig-coords">P&aacute;g. ' + s.page + ' | x: ' + s.x + ' y: ' + s.y + '</div><div class="sig-meta">biom&eacute;trico: ' + (s.identification === 'null' ? 'no' : 'sí') + ' &middot; ID oficial: ' + (s.check ? 'sí' : 'no') + ' &middot; orden: ' + s.order + '</div></div><button class="sig-del" onclick="removeSig(' + s.id + ')">&#215;</button></div>'
+      '<div class="sig-item"><div class="sig-num">' + (i+1) + '</div><div class="sig-data">' +
+      '<div class="sig-name">' + s.name + ' — ' + s.nombre + '</div>' +
+      '<div class="sig-coords">' + s.correo + ' · P&aacute;g. ' + s.page + ' | x: ' + s.x + ' y: ' + s.y + '</div>' +
+      '<div class="sig-meta">biom&eacute;trico: ' + (s.identification === 'null' ? 'no' : 'sí') + ' &middot; ID oficial: ' + (s.check ? 'sí' : 'no') + ' &middot; orden: ' + s.order + '</div>' +
+      '</div><button class="sig-del" onclick="removeSig(' + s.id + ')">&#215;</button></div>'
     ).join('');
   }
   updateJsonBox();
@@ -417,7 +448,21 @@ function clearAll() {
 
 function saveJSON() {
   if (signatures.length === 0) return;
-  window.parent.postMessage({ type: 'coordenadas', data: JSON.stringify(buildCoordsJSON()), signatory: JSON.stringify(buildSignatoryJSON()) }, '*');
+
+  // Construir campos individuales por firmante (order 1..N)
+  const firmantesData = {};
+  signatures.forEach(s => {
+    firmantesData['firmante_' + s.order + '_nombre'] = s.nombre;
+    firmantesData['firmante_' + s.order + '_correo'] = s.correo;
+  });
+
+  window.parent.postMessage({
+    type:      'coordenadas',
+    data:      JSON.stringify(buildCoordsJSON()),
+    signatory: JSON.stringify(buildSignatoryJSON()),
+    ...firmantesData
+  }, '*');
+
   const btn = document.getElementById('btnSave');
   btn.textContent = '¡Guardado!';
   btn.classList.add('saved');
