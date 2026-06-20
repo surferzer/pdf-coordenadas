@@ -110,12 +110,10 @@
           <option value="m@efektiva.mx|SharedWith">SharedWith</option>
         </select>
       </div>
-      <!-- NUEVO: Nombre completo -->
       <div class="config-row">
         <label>Nombre</label>
         <input type="text" id="nombreInput" placeholder="Nombre completo" onchange="clearMsg()" />
       </div>
-      <!-- NUEVO: Correo electrónico -->
       <div class="config-row">
         <label>Correo</label>
         <input type="email" id="correoInput" placeholder="correo@ejemplo.com" onchange="clearMsg()" />
@@ -171,7 +169,6 @@ let renderTask  = null;
 let scale       = 1.5;
 let activeTab   = 'coords';
 
-// ─── Escuchar URL de PDF desde Bubble ──────────────────────────────
 window.addEventListener('message', function(e) {
   if (!e.data) return;
   if (e.data.type === 'loadpdf' && e.data.url) {
@@ -292,7 +289,6 @@ function addSignature(e, canvas) {
   if (!correo) { showMsg('⚠ Ingresa el correo del firmante'); return; }
   if (!validarEmail(correo)) { showMsg('⚠ El correo no tiene un formato válido'); return; }
 
-  // Validar correo duplicado
   const yaExiste = signatures.some(s => s.correo === correo);
   if (yaExiste) { showMsg('⚠ Este correo ya fue usado en otro firmante'); return; }
 
@@ -312,7 +308,6 @@ function addSignature(e, canvas) {
   const check = identVal === 'null' ? false : document.getElementById('checkInput').checked;
   const order = signatures.length + 1;
 
-  // Guardamos nombre y correo real junto a los datos existentes
   signatures.push({ id: Date.now(), email, name, nombre, correo, page: currentPage, x, y, xPx, yPx, identification: identVal, order, check });
 
   document.getElementById('firmanteSelect').value = '';
@@ -364,7 +359,7 @@ function buildCoordsJSON() {
   return {
     documentID: "6836193e997c07002afdc638",
     staticSignPositions: signatures.map(s => ({
-      user:            { email: s.email },
+      user:            { email: s.correo },
       coordinates:     { x: s.x, y: s.y },
       page:            s.page,
       pageY:           s.y,
@@ -381,11 +376,11 @@ function buildSignatoryJSON() {
   const seen = {}, signatory = [], sharedWith = [];
   signatures.forEach(s => {
     if (s.email === 'm@efektiva.mx') {
-      if (!seen['sw_' + s.email]) { seen['sw_' + s.email] = true; sharedWith.push({ emailID: s.email }); }
+      if (!seen['sw_' + s.correo]) { seen['sw_' + s.correo] = true; sharedWith.push({ emailID: s.correo }); }
     } else {
-      if (!seen[s.email]) {
-        seen[s.email] = true;
-        signatory.push({ emailID: s.email, name: s.name, identification: s.identification === 'null' ? null : s.identification, check: s.check, order: s.order });
+      if (!seen[s.correo]) {
+        seen[s.correo] = true;
+        signatory.push({ emailID: s.correo, name: s.nombre, identification: s.identification === 'null' ? null : s.identification, check: s.check, order: s.order });
       }
     }
   });
@@ -441,7 +436,6 @@ function clearAll() {
 function saveJSON() {
   if (signatures.length === 0) return;
 
-  // Mapeo de nombre de rol a clave de campo
   const rolMap = {
     'Arrendador':   'arrendador',
     'Arrendatario': 'arrendatario',
