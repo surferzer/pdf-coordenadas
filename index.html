@@ -29,7 +29,6 @@
   .sidebar { background: #fff; border-left: 1px solid #e0e0e0; display: flex; flex-direction: column; overflow: hidden; }
   .sidebar-header { padding: 12px 16px; border-bottom: 1px solid #f0f0f0; font-size: 13px; font-weight: 600; color: #333; display: flex; justify-content: space-between; align-items: center; }
   .sig-count { background: #eef2ff; color: #4f7ef8; border-radius: 20px; padding: 2px 8px; font-size: 12px; }
-  .wt-info { padding: 7px 14px; border-bottom: 1px solid #f0f0f0; background: #f0faf1; display: flex; align-items: center; gap: 6px; font-size: 11px; color: #388e3c; }
   .sig-list { flex: 1; overflow-y: auto; padding: 10px; display: flex; flex-direction: column; gap: 6px; }
   .sig-item { border: 1px solid #e8e8e8; border-radius: 8px; padding: 8px 10px; background: #fafafa; display: flex; align-items: flex-start; gap: 8px; }
   .sig-num { width: 20px; height: 20px; background: #4f7ef8; color: #fff; border-radius: 50%; font-size: 10px; font-weight: 600; display: flex; align-items: center; justify-content: center; flex-shrink: 0; margin-top: 2px; }
@@ -60,6 +59,7 @@
   input[type="file"] { display: none; }
   .tooltip { position: absolute; background: rgba(0,0,0,0.75); color: #fff; font-size: 11px; padding: 4px 8px; border-radius: 4px; pointer-events: none; white-space: nowrap; z-index: 100; transform: translate(-50%, -110%); display: none; }
   .dot { display: inline-block; width: 8px; height: 8px; background: #FFD247; border-radius: 50%; margin-right: 4px; }
+  .observador-info { font-size: 11px; color: #888; background: #f0f4ff; border-radius: 6px; padding: 6px 10px; margin-top: 2px; }
 </style>
 </head>
 <body>
@@ -98,7 +98,7 @@
     <div class="config-panel">
       <div class="config-row">
         <label><span class="dot"></span>Firmante</label>
-        <select id="firmanteSelect" onchange="clearMsg()">
+        <select id="firmanteSelect" onchange="onFirmanteChange()">
           <option value="">-- Selecciona --</option>
           <option value="c@efektiva.mx|Arrendador">Arrendador</option>
           <option value="f@efektiva.mx|Arrendatario">Arrendatario</option>
@@ -107,10 +107,10 @@
           <option value="a@efektiva.mx|Depositario">Depositario</option>
           <option value="p@efektiva.mx|Testigo 1">Testigo 1</option>
           <option value="g@efektiva.mx|Testigo 2">Testigo 2</option>
-          <option value="m@efektiva.mx|SharedWith">SharedWith</option>
+          <option value="m@efektiva.mx|Observador">Observador</option>
         </select>
       </div>
-      <div class="config-row">
+      <div class="config-row" id="rowNombre">
         <label>Nombre</label>
         <input type="text" id="nombreInput" placeholder="Nombre completo" onchange="clearMsg()" />
       </div>
@@ -118,7 +118,7 @@
         <label>Correo</label>
         <input type="email" id="correoInput" placeholder="correo@ejemplo.com" onchange="clearMsg()" />
       </div>
-      <div class="config-row">
+      <div class="config-row" id="rowBiometrico">
         <label>Biométrico</label>
         <select id="identSelect" onchange="onIdentChange(this.value)">
           <option value="">-- Selecciona --</option>
@@ -133,6 +133,12 @@
           <span>Requiere ID oficial</span>
         </div>
       </div>
+      <div id="observadorInfo" class="observador-info" style="display:none;">
+        👁 El observador recibirá una copia del contrato firmado. No necesita fijar posición en el PDF. Solo puede haber un observador por contrato.
+      </div>
+      <button id="btnObservador" onclick="addObservador()" style="display:none; border:none; background:#4f7ef8; color:#fff; border-radius:6px; padding:6px 12px; font-size:12px; cursor:pointer; width:100%;">
+        + Agregar observador
+      </button>
       <div id="configMsg" style="font-size:11px;color:#e65100;background:#fff3e0;border-radius:6px;padding:5px 8px;display:none;"></div>
     </div>
 
@@ -184,6 +190,22 @@ window.addEventListener('message', function(e) {
 
 const fileInput  = document.getElementById('fileInput');
 const pdfArea    = document.getElementById('pdfArea');
+
+function onFirmanteChange() {
+  clearMsg();
+  const val = document.getElementById('firmanteSelect').value;
+  const isObservador = val === 'm@efektiva.mx|Observador';
+  document.getElementById('rowNombre').style.display      = isObservador ? 'none' : 'flex';
+  document.getElementById('rowBiometrico').style.display  = isObservador ? 'none' : 'flex';
+  document.getElementById('checkRow').style.display       = isObservador ? 'none' : 'flex';
+  document.getElementById('observadorInfo').style.display = isObservador ? 'block' : 'none';
+  document.getElementById('btnObservador').style.display  = isObservador ? 'block' : 'none';
+  if (isObservador) {
+    document.getElementById('nombreInput').value  = '';
+    document.getElementById('identSelect').value  = '';
+    document.getElementById('checkInput').checked = false;
+  }
+}
 
 async function loadPDF(file) {
   const arrayBuffer = await file.arrayBuffer();
@@ -278,9 +300,36 @@ function validarEmail(email) {
   return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
 }
 
+function addObservador() {
+  const correo = document.getElementById('correoInput').value.trim().toLowerCase();
+  if (!correo) { showMsg('⚠ Ingresa el correo del observador'); return; }
+  if (!validarEmail(correo)) { showMsg('⚠ El correo no tiene un formato válido'); return; }
+
+  const yaHayObservador = signatures.some(s => s.name === 'Observador');
+  if (yaHayObservador) { showMsg('⚠ Ya hay un observador registrado'); return; }
+
+  const yaExiste = signatures.some(s => s.correo === correo && s.name !== 'Observador');
+  if (yaExiste) { showMsg('⚠ Este correo ya fue usado en otro tipo de firmante'); return; }
+
+  clearMsg();
+  signatures.push({ id: Date.now(), email: 'm@efektiva.mx', name: 'Observador', nombre: '', correo, page: null, x: null, y: null, xPx: null, yPx: null, identification: null, order: signatures.length + 1, check: false });
+
+  document.getElementById('firmanteSelect').value = '';
+  document.getElementById('correoInput').value    = '';
+  onFirmanteChange();
+  updateSidebar();
+}
+
 function addSignature(e, canvas) {
   const firmanteVal = document.getElementById('firmanteSelect').value;
   if (!firmanteVal) { showMsg('⚠ Selecciona un tipo de firmante'); return; }
+
+  const [email, name] = firmanteVal.split('|');
+
+  if (name === 'Observador') {
+    addObservador();
+    return;
+  }
 
   const nombre = document.getElementById('nombreInput').value.trim();
   if (!nombre) { showMsg('⚠ Ingresa el nombre completo del firmante'); return; }
@@ -289,8 +338,9 @@ function addSignature(e, canvas) {
   if (!correo) { showMsg('⚠ Ingresa el correo del firmante'); return; }
   if (!validarEmail(correo)) { showMsg('⚠ El correo no tiene un formato válido'); return; }
 
-  const yaExiste = signatures.some(s => s.correo === correo);
-  if (yaExiste) { showMsg('⚠ Este correo ya fue usado en otro firmante'); return; }
+  // Permite correo duplicado solo si es el mismo tipo de firmante
+  const yaExiste = signatures.some(s => s.correo === correo && s.name !== name);
+  if (yaExiste) { showMsg('⚠ Este correo ya fue usado en otro tipo de firmante'); return; }
 
   const identVal = document.getElementById('identSelect').value;
   if (!identVal) { showMsg('⚠ Selecciona el tipo de biométrico'); return; }
@@ -304,7 +354,6 @@ function addSignature(e, canvas) {
   const x = Math.round(((xPx / rect.width)  * WT_WIDTH)  * 100) / 100;
   const y = Math.round(((yPx / rect.height) * WT_HEIGHT) * 100) / 100;
 
-  const [email, name] = firmanteVal.split('|');
   const check = identVal === 'null' ? false : document.getElementById('checkInput').checked;
   const order = signatures.length + 1;
 
@@ -315,6 +364,7 @@ function addSignature(e, canvas) {
   document.getElementById('correoInput').value    = '';
   document.getElementById('identSelect').value    = '';
   document.getElementById('checkInput').checked   = false;
+  onFirmanteChange();
 
   drawMarkers(document.getElementById('canvasWrap'));
   updateSidebar();
@@ -358,7 +408,7 @@ function changePage(dir) {
 function buildCoordsJSON() {
   return {
     documentID: "6836193e997c07002afdc638",
-    staticSignPositions: signatures.map(s => ({
+    staticSignPositions: signatures.filter(s => s.name !== 'Observador').map(s => ({
       user:            { email: s.correo },
       coordinates:     { x: s.x, y: s.y },
       page:            s.page,
@@ -375,7 +425,7 @@ function buildCoordsJSON() {
 function buildSignatoryJSON() {
   const seen = {}, signatory = [], sharedWith = [];
   signatures.forEach(s => {
-    if (s.email === 'm@efektiva.mx') {
+    if (s.name === 'Observador') {
       if (!seen['sw_' + s.correo]) { seen['sw_' + s.correo] = true; sharedWith.push({ emailID: s.correo }); }
     } else {
       if (!seen[s.correo]) {
@@ -410,9 +460,9 @@ function updateSidebar() {
   } else {
     list.innerHTML = signatures.map((s, i) =>
       '<div class="sig-item"><div class="sig-num">' + (i+1) + '</div><div class="sig-data">' +
-      '<div class="sig-name">' + s.name + ' — ' + s.nombre + '</div>' +
-      '<div class="sig-coords">' + s.correo + ' · P&aacute;g. ' + s.page + ' | x: ' + s.x + ' y: ' + s.y + '</div>' +
-      '<div class="sig-meta">biom&eacute;trico: ' + (s.identification === 'null' ? 'no' : 'sí') + ' &middot; ID oficial: ' + (s.check ? 'sí' : 'no') + ' &middot; orden: ' + s.order + '</div>' +
+      '<div class="sig-name">' + s.name + (s.nombre ? ' — ' + s.nombre : '') + '</div>' +
+      '<div class="sig-coords">' + s.correo + (s.page ? ' · P&aacute;g. ' + s.page + ' | x: ' + s.x + ' y: ' + s.y : ' · Observador') + '</div>' +
+      (s.name !== 'Observador' ? '<div class="sig-meta">biom&eacute;trico: ' + (s.identification === 'null' ? 'no' : 'sí') + ' &middot; ID oficial: ' + (s.check ? 'sí' : 'no') + ' &middot; orden: ' + s.order + '</div>' : '') +
       '</div><button class="sig-del" onclick="removeSig(' + s.id + ')">&#215;</button></div>'
     ).join('');
   }
@@ -444,7 +494,7 @@ function saveJSON() {
     'Depositario':  'depositario',
     'Testigo 1':    'testigo1',
     'Testigo 2':    'testigo2',
-    'SharedWith':   'sharedwith'
+    'Observador':   'sharedwith'
   };
 
   const firmantesData = {};
