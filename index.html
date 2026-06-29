@@ -278,7 +278,11 @@ async function renderPage(num) {
 
   canvas.onclick      = (e) => addSignature(e, canvas);
   canvas.onmousemove  = (e) => showTooltip(e, canvas);
-  canvas.onmouseleave = ()  => { document.getElementById('tooltip').style.display = 'none'; };
+  canvas.onmouseleave = ()  => {
+    document.getElementById('tooltip').style.display = 'none';
+    const preview = document.getElementById('signPreview');
+    if (preview) preview.style.display = 'none';
+  };
 
   drawMarkers(wrap);
   updatePageControls(num, totalPages);
@@ -293,6 +297,37 @@ function showTooltip(e, canvas) {
   tip.style.left = (e.clientX - rect.left) + 'px';
   tip.style.top  = (e.clientY - rect.top)  + 'px';
   tip.textContent = `x: ${x}  y: ${y}`;
+
+  // Preview box
+  const wrap = document.getElementById('canvasWrap');
+  let preview = document.getElementById('signPreview');
+  const firmanteVal = document.getElementById('firmanteSelect').value;
+  if (!firmanteVal || firmanteVal.includes('Observador')) {
+    if (preview) preview.style.display = 'none';
+    return;
+  }
+  const name = firmanteVal.split('|')[1];
+  const color = ROLE_COLORS[name] || '#FFD247';
+  const sigW = Math.round((101 / WT_WIDTH)  * wrap.offsetWidth);
+  const sigH = Math.round((51  / WT_HEIGHT) * wrap.offsetHeight);
+  const xPx = e.clientX - rect.left;
+  const yPx = e.clientY - rect.top;
+
+  if (!preview) {
+    preview = document.createElement('div');
+    preview.id = 'signPreview';
+    preview.style.cssText = 'position:absolute;border:2px dashed;border-radius:4px;pointer-events:none;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:600;white-space:nowrap;overflow:hidden;opacity:0.7;z-index:50;';
+    wrap.appendChild(preview);
+  }
+  preview.style.display = 'flex';
+  preview.style.borderColor = color;
+  preview.style.background = color + '22';
+  preview.style.color = color;
+  preview.style.width  = sigW + 'px';
+  preview.style.height = sigH + 'px';
+  preview.style.left   = (xPx - sigW / 2) + 'px';
+  preview.style.top    = (yPx - sigH / 2) + 'px';
+  preview.textContent  = name;
 }
 
 function onIdentChange(val) {
