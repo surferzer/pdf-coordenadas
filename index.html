@@ -164,8 +164,19 @@
 <script>
 pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdn.jsdelivr.net/npm/pdfjs-dist@3.11.174/build/pdf.worker.min.js';
 
-const WT_WIDTH  = 595.98;
-const WT_HEIGHT = 842.52;
+let WT_WIDTH  = 595.98;
+let WT_HEIGHT = 842.52;
+
+const ROLE_COLORS = {
+  'Arrendador':   '#4f7ef8',
+  'Arrendatario': '#e74c3c',
+  'Mancomunado':  '#27ae60',
+  'Obligado':     '#f39c12',
+  'Depositario':  '#8e44ad',
+  'Testigo 1':    '#16a085',
+  'Testigo 2':    '#d35400',
+  'Observador':   '#95a5a6'
+};
 
 let pdfDoc      = null;
 let currentPage = 1;
@@ -195,6 +206,9 @@ function onFirmanteChange() {
   clearMsg();
   const val = document.getElementById('firmanteSelect').value;
   const isObservador = val === 'm@efektiva.mx|Observador';
+  const name = val ? val.split('|')[1] : '';
+  const color = ROLE_COLORS[name] || '#FFD247';
+  document.querySelector('.dot').style.background = color;
   document.getElementById('rowNombre').style.display      = isObservador ? 'none' : 'flex';
   document.getElementById('rowBiometrico').style.display  = isObservador ? 'none' : 'flex';
   document.getElementById('checkRow').style.display       = isObservador ? 'none' : 'flex';
@@ -213,6 +227,14 @@ async function loadPDF(file) {
   totalPages  = pdfDoc.numPages;
   currentPage = 1;
   signatures  = [];
+
+  // Capturar dimensiones reales del PDF
+  const firstPage = await pdfDoc.getPage(1);
+  const vp = firstPage.getViewport({ scale: 1 });
+  WT_WIDTH  = Math.round(vp.width  * 100) / 100;
+  WT_HEIGHT = Math.round(vp.height * 100) / 100;
+  document.querySelector('.wt-badge').textContent = '✓ WeeTrust · ' + WT_WIDTH + ' × ' + WT_HEIGHT;
+
   renderPage(currentPage);
   updateSidebar();
 }
@@ -371,22 +393,31 @@ function addSignature(e, canvas) {
 }
 
 function drawMarkers(wrap) {
-  wrap.querySelectorAll('.marker, .marker-label').forEach(el => el.remove());
+  wrap.querySelectorAll('.marker, .marker-label, .marker-box').forEach(el => el.remove());
   signatures.filter(s => s.page === currentPage).forEach(s => {
+    const color = ROLE_COLORS[s.name] || '#FFD247';
+    const sigW = Math.round((101 / WT_WIDTH)  * wrap.offsetWidth);
+    const sigH = Math.round((51  / WT_HEIGHT) * wrap.offsetHeight);
+
+    // Caja de firma
+    const box = document.createElement('div');
+    box.className = 'marker-box';
+    box.style.cssText = 'position:absolute;border:2px solid ' + color + ';background:' + color + '22;border-radius:4px;pointer-events:none;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:600;color:' + color + ';white-space:nowrap;overflow:hidden;';
+    box.style.width  = sigW + 'px';
+    box.style.height = sigH + 'px';
+    box.style.left   = (s.xPx - sigW / 2) + 'px';
+    box.style.top    = (s.yPx - sigH / 2) + 'px';
+    box.textContent  = s.name;
+    wrap.appendChild(box);
+
+    // Etiqueta arriba
     const label = document.createElement('div');
     label.className = 'marker-label';
     label.style.left = s.xPx + 'px';
-    label.style.top  = s.yPx + 'px';
-    label.textContent = s.name;
+    label.style.top  = (s.yPx - sigH / 2) + 'px';
+    label.style.background = color;
+    label.textContent = s.name + (s.nombre ? ' — ' + s.nombre : '');
     wrap.appendChild(label);
-
-    const marker = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
-    marker.setAttribute('viewBox', '0 0 28 28');
-    marker.classList.add('marker');
-    marker.style.left = s.xPx + 'px';
-    marker.style.top  = s.yPx + 'px';
-    marker.innerHTML  = '<path d="M14 2C9.6 2 6 5.6 6 10c0 6 8 16 8 16s8-10 8-16c0-4.4-3.6-8-8-8z" fill="#FFD247" stroke="#fff" stroke-width="1.5"/><circle cx="14" cy="10" r="3" fill="#fff"/>';
-    wrap.appendChild(marker);
   });
 }
 
@@ -458,13 +489,14 @@ function updateSidebar() {
   if (signatures.length === 0) {
     list.innerHTML = '<div class="empty-state"><svg width="28" height="28" viewBox="0 0 32 32" fill="none"><rect x="6" y="4" width="20" height="24" rx="3" stroke="#aaa" stroke-width="1.5"/><path d="M11 12h10M11 16h10M11 20h6" stroke="#aaa" stroke-width="1.5" stroke-linecap="round"/></svg><p style="margin-top:6px;">Carga un PDF y haz<br/>clic donde va la firma</p></div>';
   } else {
-    list.innerHTML = signatures.map((s, i) =>
-      '<div class="sig-item"><div class="sig-num">' + (i+1) + '</div><div class="sig-data">' +
-      '<div class="sig-name">' + s.name + (s.nombre ? ' — ' + s.nombre : '') + '</div>' +
+    list.innerHTML = signatures.map((s, i) => {
+      const color = ROLE_COLORS[s.name] || '#4f7ef8';
+      return '<div class="sig-item"><div class="sig-num" style="background:' + color + '">' + (i+1) + '</div><div class="sig-data">' +
+      '<div class="sig-name" style="color:' + color + '">' + s.name + (s.nombre ? ' — ' + s.nombre : '') + '</div>' +
       '<div class="sig-coords">' + s.correo + (s.page ? ' · P&aacute;g. ' + s.page + ' | x: ' + s.x + ' y: ' + s.y : ' · Observador') + '</div>' +
       (s.name !== 'Observador' ? '<div class="sig-meta">biom&eacute;trico: ' + (s.identification === 'null' ? 'no' : 'sí') + ' &middot; ID oficial: ' + (s.check ? 'sí' : 'no') + ' &middot; orden: ' + s.order + '</div>' : '') +
-      '</div><button class="sig-del" onclick="removeSig(' + s.id + ')">&#215;</button></div>'
-    ).join('');
+      '</div><button class="sig-del" onclick="removeSig(' + s.id + ')">&#215;</button></div>';
+    }).join('');
   }
   updateJsonBox();
 }
