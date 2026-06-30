@@ -71,7 +71,7 @@
   </svg>
   <h1>Coordenadas de firma en PDF</h1>
   <span>Clic en el PDF para fijar firmas</span>
-  <div class="wt-badge">✓ WeeTrust · 595.98 × 842.52</div>
+  <div class="wt-badge">⚠ MODO TEST · Fijo 595.98 × 842.52</div>
 </header>
 
 <div class="main">
@@ -164,8 +164,16 @@
 <script>
 pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdn.jsdelivr.net/npm/pdfjs-dist@3.11.174/build/pdf.worker.min.js';
 
+/* ===================================================================
+   MODO TEST — DIMENSIONES FORZADAS (DESACTIVADO EL AUTO-DETECT)
+   Objetivo: aislar si el bug de "Borrador" en WeeTrust es causado por
+   las dimensiones dinámicas, o si es algo no relacionado a esto.
+   Para revertir a producción: ver bloque "loadPDF()" más abajo,
+   buscar el comentario "REVERTIR AQUI" y descomentar el auto-detect.
+   =================================================================== */
 let WT_WIDTH  = 595.98;
 let WT_HEIGHT = 842.52;
+const MODO_TEST_DIMENSIONES_FIJAS = true; // <-- poner en false para volver a detección dinámica
 
 const ROLE_COLORS = {
   'Arrendador':   '#38bdf8',
@@ -228,15 +236,21 @@ async function loadPDF(file) {
   currentPage = 1;
   signatures  = [];
 
-  // Capturar dimensiones reales del PDF
-  const firstPage = await pdfDoc.getPage(1);
-  const vp = firstPage.getViewport({ scale: 1 });
-  WT_WIDTH  = Math.round(vp.width  * 100) / 100;
-  WT_HEIGHT = Math.round(vp.height * 100) / 100;
-  // WeeTrust requiere decimales explícitos (ej. 612.12, no 612)
-  if (Number.isInteger(WT_WIDTH))  WT_WIDTH  = WT_WIDTH  + 0.01;
-  if (Number.isInteger(WT_HEIGHT)) WT_HEIGHT = WT_HEIGHT + 0.01;
-  document.querySelector('.wt-badge').textContent = '✓ WeeTrust · ' + WT_WIDTH + ' × ' + WT_HEIGHT;
+  if (MODO_TEST_DIMENSIONES_FIJAS) {
+    // ---- MODO TEST: NO se detectan dimensiones reales del PDF ----
+    // Se dejan WT_WIDTH / WT_HEIGHT en los valores fijos declarados arriba
+    // (595.98 x 842.52), sin importar el tamaño real del PDF cargado.
+    document.querySelector('.wt-badge').textContent = '⚠ MODO TEST · Fijo ' + WT_WIDTH + ' × ' + WT_HEIGHT;
+  } else {
+    // ---- REVERTIR AQUI: detección dinámica real del PDF (producción) ----
+    const firstPage = await pdfDoc.getPage(1);
+    const vp = firstPage.getViewport({ scale: 1 });
+    WT_WIDTH  = Math.round(vp.width  * 100) / 100;
+    WT_HEIGHT = Math.round(vp.height * 100) / 100;
+    if (Number.isInteger(WT_WIDTH))  WT_WIDTH  = WT_WIDTH  + 0.01;
+    if (Number.isInteger(WT_HEIGHT)) WT_HEIGHT = WT_HEIGHT + 0.01;
+    document.querySelector('.wt-badge').textContent = '✓ WeeTrust · ' + WT_WIDTH + ' × ' + WT_HEIGHT;
+  }
 
   renderPage(currentPage);
   updateSidebar();
