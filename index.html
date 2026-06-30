@@ -173,7 +173,7 @@ pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdn.jsdelivr.net/npm/pdfjs-dis
    =================================================================== */
 let WT_WIDTH  = 595.98;
 let WT_HEIGHT = 842.52;
-const MODO_TEST_DIMENSIONES_FIJAS = true; // <-- poner en false para volver a detección dinámica
+const MODO_TEST_DIMENSIONES_FIJAS = false; // confirmado: las dimensiones NO eran la causa del Borrador. El bug real era el "order" con huecos por el Observador (ver buildSignatoryJSON).
 
 const ROLE_COLORS = {
   'Arrendador':   '#38bdf8',
@@ -513,7 +513,11 @@ function buildSignatoryJSON() {
     } else {
       if (!seen[s.correo]) {
         seen[s.correo] = true;
-        signatory.push({ emailID: s.correo, name: s.nombre, identification: s.identification === 'null' ? null : s.identification, check: s.check, order: s.order });
+        // FIX: el "order" ya NO se toma de s.order (asignado al momento del click,
+        // que puede tener huecos si se agregó un Observador entre dos firmantes).
+        // Se recalcula secuencial SOLO contando firmantes reales (1,2,3... sin saltos),
+        // que es lo que WeeTrust espera y por lo que el doc quedaba en Borrador.
+        signatory.push({ emailID: s.correo, name: s.nombre, identification: s.identification === 'null' ? null : s.identification, check: s.check, order: signatory.length + 1 });
       }
     }
   });
