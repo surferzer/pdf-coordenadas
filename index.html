@@ -425,8 +425,11 @@ function addSignature(e, canvas) {
   const xPx  = e.clientX - rect.left;
   const yPx  = e.clientY - rect.top;
 
-  const x = Math.round(((xPx / rect.width)  * WT_WIDTH)  * 100) / 100;
-  const y = Math.round(((yPx / rect.height) * WT_HEIGHT) * 100) / 100;
+  // FIX DESFASE: WeeTrust interpreta x,y como la esquina superior-izquierda del
+  // cuadro de firma (101x51pt), no como el centro. Restamos la mitad de cada
+  // dimension para que el punto de click quede centrado visualmente en el cuadro.
+  const x = Math.round((((xPx / rect.width)  * WT_WIDTH)  - (101 / 2)) * 100) / 100;
+  const y = Math.round((((yPx / rect.height) * WT_HEIGHT) - (51  / 2)) * 100) / 100;
 
   const check = identVal === 'null' ? false : document.getElementById('checkInput').checked;
   const order = signatures.length + 1;
