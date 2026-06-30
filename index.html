@@ -233,6 +233,9 @@ async function loadPDF(file) {
   const vp = firstPage.getViewport({ scale: 1 });
   WT_WIDTH  = Math.round(vp.width  * 100) / 100;
   WT_HEIGHT = Math.round(vp.height * 100) / 100;
+  // WeeTrust requiere decimales explícitos (ej. 612.12, no 612)
+  if (Number.isInteger(WT_WIDTH))  WT_WIDTH  = WT_WIDTH  + 0.01;
+  if (Number.isInteger(WT_HEIGHT)) WT_HEIGHT = WT_HEIGHT + 0.01;
   document.querySelector('.wt-badge').textContent = '✓ WeeTrust · ' + WT_WIDTH + ' × ' + WT_HEIGHT;
 
   renderPage(currentPage);
